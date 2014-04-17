@@ -23,9 +23,9 @@ public class PlayerControl : MonoBehaviour
   void Start ()
   {
     if (ground == null) {
-      ground = GameObject.Find("Terrain");
+      ground = GameObject.Find ("Terrain");
     }
-    fTerrain = ground.GetComponent<Terrain>();
+    fTerrain = ground.GetComponent<Terrain> ();
     fTerrainData = fTerrain.terrainData;
     fKatapult = transform.FindChild ("Katapult");
     fRohr = fKatapult.transform.FindChild ("Rohr");
@@ -64,18 +64,25 @@ public class PlayerControl : MonoBehaviour
       }
       fLader.localPosition = lPos;
     }
-    if (lS != 0.0f) {
+    {
       Vector3 lPos = transform.position;
-      float lMax = fTerrain.SampleHeight(transform.position + new Vector3(-1,0,1));
-      float lY = fTerrain.SampleHeight(transform.position + new Vector3(1,0,1));
-      if (lY > lMax) lMax = lY;
-      lY = fTerrain.SampleHeight(transform.position + new Vector3(1,0,-1));
-      if (lY > lMax) lMax = lY;
-      lY = fTerrain.SampleHeight(transform.position + new Vector3(-1,0,-1));
-      if (lY > lMax) lMax = lY;
-      lY = fTerrain.SampleHeight(transform.position);
-      if (lY > lMax) lMax = lY;
+      float lMax = fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, 1));
+      float lY = fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, 1));
+      if (lY > lMax)
+        lMax = lY;
+      lY = fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, -1));
+      if (lY > lMax)
+        lMax = lY;
+      lY = fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, -1));
+      if (lY > lMax)
+        lMax = lY;
+      lY = fTerrain.SampleHeight (transform.position);
+      if (lY > lMax)
+        lMax = lY;
       lPos.y = lMax + 0.5f;
+      if (lS != 0.0f) {
+        lPos = lPos + transform.forward * lS;
+      }
       transform.position = lPos + transform.forward * lS;
     }
   }

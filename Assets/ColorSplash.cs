@@ -36,6 +36,9 @@ public class ColorSplash : MonoBehaviour
         Destroy (gameObject);
       }
     }
+    if (transform.position.y < ground.transform.position.y - fTerrain.terrainData.size.y) {
+      Destroy (gameObject);
+    }
   }
 
   Vector2 toAlphaMapPoint (Vector3 aPos)
