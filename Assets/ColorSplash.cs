@@ -6,9 +6,10 @@ public class ColorSplash : MonoBehaviour
 
   public GameObject ground = null;
   public int terrainTextureNumber = 3;
-  public float scaleDownFactor = 0.75f;
+  public float scaleDownFactor = 0.9f;
   public float minSize = 0.1f;
   protected Vector3 fCollisionPoint = Vector3.zero;
+  protected Vector3 fLastCollisionPoint = Vector3.zero;
   protected Terrain fTerrain = null;
 
   // Use this for initialization
@@ -24,9 +25,12 @@ public class ColorSplash : MonoBehaviour
   void Update ()
   {
     if (fCollisionPoint != Vector3.zero) {
-      SplashOnMap();
-      //Invoke("PaintOnMap", 0.0f);
-      PaintOnMap ();
+      if (fLastCollisionPoint == Vector3.zero || (fLastCollisionPoint - fCollisionPoint).magnitude >= 1.0f) {
+        print ("collision" + fCollisionPoint);
+        fLastCollisionPoint = fCollisionPoint;
+        SplashOnMap ();
+        PaintOnMap ();
+      }
       transform.localScale = transform.localScale * scaleDownFactor;
       if (transform.localScale.magnitude < minSize) {
         Destroy (gameObject);
@@ -50,15 +54,32 @@ public class ColorSplash : MonoBehaviour
     return new Vector2 (lPos.x, lPos.z);
   }
 
-  void SetTextureOnMap(float[,,] aAlphas, int aX, int aY, float aValue) {
+  void SetTextureOnMap (float[,,] aAlphas, int aX, int aY, float aValue)
+  {
     float lV = aAlphas [aX, aY, terrainTextureNumber];
     float lO = 1.0f - lV;
-    float lNO = 1.0f - (lV - aValue);
-    for (int lA = 0; lA < fTerrain.terrainData.alphamapLayers; lA++) {
-      if (lA == terrainTextureNumber) {
-        aAlphas [aX, aY, lA] = aValue;
-      } else {
-        aAlphas [aX, aY, lA] = 0.0f;
+    float lNO = 1.0f - aValue;
+    float lNOfak = 1.0f;
+    if (lO > 0.0f) {
+      lNOfak = lNO / lO;
+    }
+    if (aValue == 0.0f && lV >= 1.0f) {
+      for (int lA = 0; lA < fTerrain.terrainData.alphamapLayers; lA++) {
+        if (lA == terrainTextureNumber) {
+          aAlphas [aX, aY, lA] = aValue;
+        } else if (lA == 0) {
+          aAlphas [aX, aY, lA] = 1.0f;
+        } else {
+          aAlphas [aX, aY, lA] = 0.0f;
+        }
+      }
+    } else {
+      for (int lA = 0; lA < fTerrain.terrainData.alphamapLayers; lA++) {
+        if (lA == terrainTextureNumber) {
+          aAlphas [aX, aY, lA] = aValue;
+        } else {
+          aAlphas [aX, aY, lA] *= lNOfak;
+        }
       }
     }
   }
@@ -67,27 +88,23 @@ public class ColorSplash : MonoBehaviour
   {
     Vector2 lPos1 = toAlphaMapPoint (fCollisionPoint - transform.localScale * 4.0f);
     Vector2 lPos2 = toAlphaMapPoint (fCollisionPoint + transform.localScale * 4.0f);
-    //Vector3 lPos = fCollisionPoint - ground.transform.position;
-    //lPos.x = lPos.x / fTerrain.terrainData.size.x * fTerrain.terrainData.alphamapWidth;
-    //lPos.z = lPos.z / fTerrain.terrainData.size.z * fTerrain.terrainData.alphamapHeight;
     int lX = Mathf.FloorToInt (lPos1.x);
     int lY = Mathf.FloorToInt (lPos1.y);
     int lW = Mathf.FloorToInt (lPos2.x) - lX;
     int lH = Mathf.FloorToInt (lPos2.y) - lY;
-    //print ("Pos: " + lPos + " X=" + lX + " Y=" + lY);
     float[,,] lAlphas = fTerrain.terrainData.GetAlphamaps (lX, lY, lW, lH);
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
-        SetTextureOnMap(lAlphas, lxx, lyy, 1.0f);
-        /*
-        for (int lA = 0; lA < fTerrain.terrainData.alphamapLayers; lA++) {
-          if (lA == terrainTextureNumber) {
-            lAlphas [lxx, lyy, lA] = 1.0f;
-          } else {
-            lAlphas [lxx, lyy, lA] = 0.0f;
+        float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
+        float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
+        float lS = Mathf.Cos(lsx) * Mathf.Cos(lsy);
+        if (lS > 0.0f) {
+          lS += lAlphas [lxx, lyy, terrainTextureNumber];
+          if (lS > 1.0f) {
+            lS = 1.0f;
           }
+          SetTextureOnMap (lAlphas, lxx, lyy, lS);
         }
-        */
       }
     }
     fTerrain.terrainData.SetAlphamaps (lX, lY, lAlphas);
@@ -95,8 +112,8 @@ public class ColorSplash : MonoBehaviour
 
   void SplashOnMap ()
   {
-    Vector2 lPos1 = toHeightMapPoint (fCollisionPoint - transform.localScale);
-    Vector2 lPos2 = toHeightMapPoint (fCollisionPoint + transform.localScale);
+    Vector2 lPos1 = toHeightMapPoint (fCollisionPoint - transform.localScale * 4.0f);
+    Vector2 lPos2 = toHeightMapPoint (fCollisionPoint + transform.localScale * 4.0f);
     int lX = Mathf.FloorToInt (lPos1.x);
     int lY = Mathf.FloorToInt (lPos1.y);
     int lW = Mathf.FloorToInt (lPos2.x) - lX;
@@ -104,7 +121,12 @@ public class ColorSplash : MonoBehaviour
     float[,] lHeights = fTerrain.terrainData.GetHeights (lX, lY, lW, lH);
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
-        lHeights [lxx, lyy] += 0.001f;
+        float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
+        float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
+        float lS = Mathf.Cos(lsx) * Mathf.Cos(lsy);
+        if (lS > 0.0f) {
+          lHeights [lxx, lyy] += 0.002f * lS;
+        }
       }
     }
     fTerrain.terrainData.SetHeights (lX, lY, lHeights);
