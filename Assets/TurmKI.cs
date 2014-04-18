@@ -5,25 +5,35 @@ public class TurmKI : MonoBehaviour
 {
 
   public float radius = 30.0f;
+  public GameObject bullet = null;
+  public float power = 200.0f;
   protected Transform fPlattform = null;
   protected Transform fKatapult = null;
   protected Transform fKatapultBase = null;
   protected Transform fRohr = null;
   protected Transform fLader = null;
   protected Transform fHoehe = null;
+  protected Transform fStartPos = null;
   protected Quaternion fKatapultOrgRot;
+  protected Vector3 fLaderOrgPos;
   protected GameObject fTargetPlayer = null;
+  protected bool fStartFire = false;
 
   // Use this for initialization
   void Start ()
   {
+    if (bullet == null) {
+      bullet = GameObject.Find ("Kugel_Base");
+    }
     fPlattform = transform.FindChild ("Plattform");
     fHoehe = transform.FindChild ("Hoehe");
     fKatapultBase = fHoehe.FindChild ("KatapultBase");
     fKatapult = fKatapultBase.FindChild ("Katapult");
     fRohr = fKatapult.FindChild ("Rohr");
-    fLader = fKatapult.FindChild ("Lader");
+    fLader = fRohr.FindChild ("Lader");
+    fStartPos = fRohr.FindChild ("StartPos");
     fKatapultOrgRot = fKatapult.rotation;
+    fLaderOrgPos = fLader.localPosition;
   }
   
   // Update is called once per frame
@@ -41,19 +51,30 @@ public class TurmKI : MonoBehaviour
     } else {
       if ((fTargetPlayer.transform.position - transform.position).magnitude > radius) {
         fTargetPlayer = null;
+        fStartFire = false;
+        fLader.localPosition = fLaderOrgPos;
         fKatapult.rotation = fKatapultOrgRot;
       }
     }
     if (fTargetPlayer != null) {
-      //fKatapult.Rotate(new Vector3(1,0,0));
-      fKatapult.rotation = Quaternion.LookRotation(fKatapult.position - fTargetPlayer.transform.position, Vector3.up);
-      //fKatapult.LookAt(fTargetPlayer.transform.position);
+      if (fStartFire) {
+        if (fLader.localPosition.y >= 0) {
+          fTargetPlayer = null;
+          fStartFire = false;
+          fLader.localPosition = fLaderOrgPos;
+          float lPower = power; //power * (minPower + ((Time.time - fStartFireTime) * timeScale));
+          GameObject lBullet = Instantiate (bullet, fStartPos.position, Quaternion.identity) as GameObject;
+          lBullet.rigidbody.AddForce (fRohr.TransformDirection (Vector3.down) * lPower);
+        } else {
+          fLader.localPosition += Vector3.up * 0.05f;
+        }
+      } else {
+        Quaternion lDestRot = Quaternion.LookRotation (fKatapult.position - fTargetPlayer.transform.position, Vector3.up);
+        fKatapult.rotation = Quaternion.Lerp (fKatapult.rotation, lDestRot, 0.1f);
+        if ((fKatapult.rotation.eulerAngles - lDestRot.eulerAngles).magnitude < 0.1f) {
+          fStartFire = true;
+        }
+      }
     }
-//    Collider[] lCols = Physics.OverlapSphere(transform.position, radius);
-//    foreach(Collider lCol in lCols) {
-//      if (lCol.gameObject.name.Equals("Panzer")) {
-//        print (lCol);
-//      }
-//    }
   }
 }

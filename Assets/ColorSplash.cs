@@ -7,6 +7,7 @@ public class ColorSplash : MonoBehaviour
   public GameObject ground = null;
   public int terrainTextureNumber = 3;
   public float scaleDownFactor = 0.9f;
+  public float splashFactor = 0.002f;
   public float minSize = 0.1f;
   protected Vector3 fCollisionPoint = Vector3.zero;
   protected Vector3 fLastCollisionPoint = Vector3.zero;
@@ -127,7 +128,7 @@ public class ColorSplash : MonoBehaviour
         float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
         float lS = Mathf.Cos(lsx) * Mathf.Cos(lsy);
         if (lS > 0.0f) {
-          lHeights [lxx, lyy] += 0.002f * lS;
+          lHeights [lxx, lyy] += splashFactor * lS;
         }
       }
     }
