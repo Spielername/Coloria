@@ -26,7 +26,6 @@ public class ColorSplash : MonoBehaviour
   {
     if (fCollisionPoint != Vector3.zero) {
       if (fLastCollisionPoint == Vector3.zero || (fLastCollisionPoint - fCollisionPoint).magnitude >= 1.0f) {
-        print ("collision" + fCollisionPoint);
         fLastCollisionPoint = fCollisionPoint;
         SplashOnMap ();
         PaintOnMap ();
