@@ -141,6 +141,9 @@ public class ColorSplash : MonoBehaviour
       if (contact.otherCollider.gameObject.name.Equals ("Terrain")) {
         fCollisionPoint = contact.point;
       }
+      if (contact.otherCollider.gameObject.CompareTag("TurmDetector")) {
+        print ("Turm getroffen!");
+      }
     }
   }
 
