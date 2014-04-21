@@ -89,6 +89,7 @@ public class ColorSplash : MonoBehaviour
   
   void PaintOnMap ()
   {
+    bool lModified = false;
     Vector2 lPos1 = toAlphaMapPoint (fCollisionPoint - transform.localScale * 4.0f);
     Vector2 lPos2 = toAlphaMapPoint (fCollisionPoint + transform.localScale * 4.0f);
     int lX = Mathf.FloorToInt (lPos1.x);
@@ -106,11 +107,14 @@ public class ColorSplash : MonoBehaviour
           if (lS > 1.0f) {
             lS = 1.0f;
           }
+          lModified = lModified || lAlphas [lxx, lyy, terrainTextureNumber] != lS;
           SetTextureOnMap (lAlphas, lxx, lyy, lS);
         }
       }
     }
-    fTerrain.terrainData.SetAlphamaps (lX, lY, lAlphas);
+    if (lModified) {
+      fTerrain.terrainData.SetAlphamaps (lX, lY, lAlphas);
+    }
   }
 
   void SplashOnMap ()
