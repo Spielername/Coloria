@@ -49,7 +49,7 @@ public class GameController : MonoBehaviour
     fNewAlphas = fTerrainData.GetAlphamaps (0, 0, lw, lh);
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
-        int lt = Mathf.FloorToInt (fNewHeights [lx, ly] * 2);
+        int lt = Mathf.FloorToInt (fNewHeights [lx, ly] * 1);
         for (int ll = 0; ll < fTerrainData.alphamapLayers; ll++) {
           if (ll == lt) {
             fNewAlphas [lx, ly, ll] = 1.0f;
@@ -116,11 +116,22 @@ public class GameController : MonoBehaviour
   Vector3 TerrainPosToWorldPos (int aX, int aY)
   {
     float ly = fNewHeights [aX, aY];
-    return fTerrain.transform.position + new Vector3 ((float)aX / (float)fTerrainData.heightmapWidth * fTerrainData.size.x, ly * fTerrainData.size.y, (float)aY / (float)fTerrainData.heightmapHeight * fTerrainData.size.z);
+    return fTerrain.transform.position
+      + new Vector3 (
+        (float)aY / (float)fTerrainData.heightmapHeight * fTerrainData.size.z,
+        ly * fTerrainData.size.y,
+        (float)aX / (float)fTerrainData.heightmapWidth * fTerrainData.size.x
+        );
+    /*+ new Vector3 (
+        (float)aX / (float)fTerrainData.heightmapWidth * fTerrainData.size.x,
+        ly * fTerrainData.size.y,
+        (float)aY / (float)fTerrainData.heightmapHeight * fTerrainData.size.z
+    );*/
   }
 
   void GenerateTowers ()
   {
+    print (fTerrainData.size);
     if (towerPreFab != null && towerCount > 0) {
       int lcount = Mathf.FloorToInt (Mathf.Sqrt (towerCount));
       int lw = fTerrainData.heightmapWidth;
@@ -156,9 +167,16 @@ public class GameController : MonoBehaviour
       for (int lx = 0; lx < lcount; lx++) {
         for (int ly = 0; ly < lcount; ly++) {
           __TowerPos lPos = lPoss [lx, ly];
+          for (int ll = 0; ll < fTerrainData.alphamapLayers; ll++) {
+            if (ll == 3) {
+              fNewAlphas [lPos.x, lPos.y, ll] = 1.0f;
+            } else {
+              fNewAlphas [lPos.x, lPos.y, ll] = 0.0f;
+            }
+          }
           Vector3 lTPos = TerrainPosToWorldPos (lPos.x, lPos.y) + Vector3.down * 0.5f;
           print (lPos.x + " " + lPos.y + " " + lPos.h + " " + lTPos);
-          Instantiate(towerPreFab, lTPos, Quaternion.identity);
+          Instantiate (towerPreFab, lTPos, Quaternion.identity);
         }
       }
     }
@@ -167,8 +185,8 @@ public class GameController : MonoBehaviour
   void GenerateLevel ()
   {
     GenerateMap ();
-    SetMap ();
     GenerateTowers ();
+    SetMap ();
   }
 
   // Update is called once per frame
