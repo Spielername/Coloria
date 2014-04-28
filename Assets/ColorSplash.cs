@@ -3,23 +3,26 @@ using System.Collections;
 
 public class ColorSplash : MonoBehaviour
 {
-
-  public GameObject ground = null;
+  //public GameObject ground = null;
   public int terrainTextureNumber = 3;
   public float scaleDownFactor = 0.9f;
   public float splashFactor = 0.002f;
   public float minSize = 0.1f;
+  public float splashPaintSize = 4.0f;
+  public float splashHeightSize = 4.0f;
+  public float maxLiveTime = 15.0f;
   protected Vector3 fCollisionPoint = Vector3.zero;
   protected Vector3 fLastCollisionPoint = Vector3.zero;
-  protected Terrain fTerrain = null;
+  //protected Terrain fTerrain = null;
 
   // Use this for initialization
   void Start ()
   {
-    if (ground == null) {
-      ground = GameObject.Find ("Terrain");
-    }
-    fTerrain = ground.GetComponent<Terrain> ();
+    //if (ground == null) {
+    //  ground = GameObject.Find ("Terrain");
+    //}
+    //fTerrain = ground.GetComponent<Terrain> ();
+    Destroy(gameObject, maxLiveTime);
   }
   
   // Update is called once per frame
@@ -36,30 +39,14 @@ public class ColorSplash : MonoBehaviour
         Destroy (gameObject);
       }
     }
-    if (transform.position.y < ground.transform.position.y - fTerrain.terrainData.size.y) {
-      Destroy (gameObject);
-    }
-  }
-
-  Vector2 toAlphaMapPoint (Vector3 aPos)
-  {
-    Vector3 lPos = aPos - ground.transform.position;
-    lPos.x = lPos.x / fTerrain.terrainData.size.x * fTerrain.terrainData.alphamapWidth;
-    lPos.z = lPos.z / fTerrain.terrainData.size.z * fTerrain.terrainData.alphamapHeight;
-    return new Vector2 (lPos.x, lPos.z);
-  }
-
-  Vector2 toHeightMapPoint (Vector3 aPos)
-  {
-    Vector3 lPos = aPos - ground.transform.position;
-    lPos.x = lPos.x / fTerrain.terrainData.size.x * fTerrain.terrainData.heightmapWidth;
-    lPos.z = lPos.z / fTerrain.terrainData.size.z * fTerrain.terrainData.heightmapHeight;
-    return new Vector2 (lPos.x, lPos.z);
+    //if (transform.position.y < ground.transform.position.y - fTerrain.terrainData.size.y) {
+    //  Destroy (gameObject);
+    //}
   }
 
   void SetTextureOnMap (float[,,] aAlphas, int aX, int aY, float aValue)
   {
-    float lV = aAlphas [aX, aY, terrainTextureNumber];
+    float lV = aAlphas [aY, aX, terrainTextureNumber];
     float lO = 1.0f - lV;
     float lNO = 1.0f - aValue;
     float lNOfak = 1.0f;
@@ -67,21 +54,21 @@ public class ColorSplash : MonoBehaviour
       lNOfak = lNO / lO;
     }
     if (aValue == 0.0f && lV >= 1.0f) {
-      for (int lA = 0; lA < fTerrain.terrainData.alphamapLayers; lA++) {
+      for (int lA = 0; lA < GameController.instance.GetAlphaMapLayerCount(); lA++) {
         if (lA == terrainTextureNumber) {
-          aAlphas [aX, aY, lA] = aValue;
+          aAlphas [aY, aX, lA] = aValue;
         } else if (lA == 0) {
-          aAlphas [aX, aY, lA] = 1.0f;
+          aAlphas [aY, aX, lA] = 1.0f;
         } else {
-          aAlphas [aX, aY, lA] = 0.0f;
+          aAlphas [aY, aX, lA] = 0.0f;
         }
       }
     } else {
-      for (int lA = 0; lA < fTerrain.terrainData.alphamapLayers; lA++) {
+      for (int lA = 0; lA < GameController.instance.GetAlphaMapLayerCount(); lA++) {
         if (lA == terrainTextureNumber) {
-          aAlphas [aX, aY, lA] = aValue;
+          aAlphas [aY, aX, lA] = aValue;
         } else {
-          aAlphas [aX, aY, lA] *= lNOfak;
+          aAlphas [aY, aX, lA] *= lNOfak;
         }
       }
     }
@@ -90,53 +77,53 @@ public class ColorSplash : MonoBehaviour
   void PaintOnMap ()
   {
     bool lModified = false;
-    Vector2 lPos1 = toAlphaMapPoint (fCollisionPoint - transform.localScale * 4.0f);
-    Vector2 lPos2 = toAlphaMapPoint (fCollisionPoint + transform.localScale * 4.0f);
+    Vector2 lPos1 = GameController.instance.ConvertToAlphaMapPoint (fCollisionPoint - transform.localScale * splashPaintSize);
+    Vector2 lPos2 = GameController.instance.ConvertToAlphaMapPoint (fCollisionPoint + transform.localScale * splashPaintSize);
     int lX = Mathf.FloorToInt (lPos1.x);
     int lY = Mathf.FloorToInt (lPos1.y);
     int lW = Mathf.FloorToInt (lPos2.x) - lX;
     int lH = Mathf.FloorToInt (lPos2.y) - lY;
-    float[,,] lAlphas = fTerrain.terrainData.GetAlphamaps (lX, lY, lW, lH);
+    float[,,] lAlphas = GameController.instance.GetTerrainAlphas (lX, lY, lW, lH); //fTerrain.terrainData.GetAlphamaps (lX, lY, lW, lH);
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
         float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
         float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
-        float lS = Mathf.Cos(lsx) * Mathf.Cos(lsy);
+        float lS = Mathf.Cos (lsx) * Mathf.Cos (lsy);
         if (lS > 0.0f) {
-          lS += lAlphas [lxx, lyy, terrainTextureNumber];
+          lS += lAlphas [lyy, lxx, terrainTextureNumber];
           if (lS > 1.0f) {
             lS = 1.0f;
           }
-          lModified = lModified || lAlphas [lxx, lyy, terrainTextureNumber] != lS;
+          lModified = lModified || lAlphas [lyy, lxx, terrainTextureNumber] != lS;
           SetTextureOnMap (lAlphas, lxx, lyy, lS);
         }
       }
     }
     if (lModified) {
-      fTerrain.terrainData.SetAlphamaps (lX, lY, lAlphas);
+      GameController.instance.SetTerrainAlphas (lX, lY, lAlphas); //fTerrain.terrainData.SetAlphamaps (lX, lY, lAlphas);
     }
   }
 
   void SplashOnMap ()
   {
-    Vector2 lPos1 = toHeightMapPoint (fCollisionPoint - transform.localScale * 4.0f);
-    Vector2 lPos2 = toHeightMapPoint (fCollisionPoint + transform.localScale * 4.0f);
+    Vector2 lPos1 = GameController.instance.ConvertToHeightMapPoint (fCollisionPoint - transform.localScale * splashHeightSize);
+    Vector2 lPos2 = GameController.instance.ConvertToHeightMapPoint (fCollisionPoint + transform.localScale * splashHeightSize);
     int lX = Mathf.FloorToInt (lPos1.x);
     int lY = Mathf.FloorToInt (lPos1.y);
     int lW = Mathf.FloorToInt (lPos2.x) - lX;
     int lH = Mathf.FloorToInt (lPos2.y) - lY;
-    float[,] lHeights = fTerrain.terrainData.GetHeights (lX, lY, lW, lH);
+    float[,] lHeights = GameController.instance.GetTerrainHeights (lX, lY, lW, lH); // fTerrain.terrainData.GetHeights (lX, lY, lW, lH);
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
         float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
         float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
-        float lS = Mathf.Cos(lsx) * Mathf.Cos(lsy);
+        float lS = Mathf.Cos (lsx) * Mathf.Cos (lsy);
         if (lS > 0.0f) {
-          lHeights [lxx, lyy] += splashFactor * lS;
+          lHeights [lyy, lxx] += splashFactor * lS;
         }
       }
     }
-    fTerrain.terrainData.SetHeights (lX, lY, lHeights);
+    GameController.instance.SetTerrainHeights (lX, lY, lHeights); //fTerrain.terrainData.SetHeights (lX, lY, lHeights);
   }
   
   void OnCollisionEnter (Collision collision)
@@ -145,7 +132,7 @@ public class ColorSplash : MonoBehaviour
       if (contact.otherCollider.gameObject.name.Equals ("Terrain")) {
         fCollisionPoint = contact.point;
       }
-      if (contact.otherCollider.gameObject.CompareTag("TurmDetector")) {
+      if (contact.otherCollider.gameObject.CompareTag ("TurmDetector")) {
         print ("Turm getroffen!");
       }
     }

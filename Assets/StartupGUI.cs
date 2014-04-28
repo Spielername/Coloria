@@ -50,15 +50,10 @@ public class StartupGUI : MonoBehaviour
     GUILayout.Label ("max. Players: ");
     fmaxPlayersStr = GUILayout.TextField (fmaxPlayersStr);
     if (!lCanStartServer) {
-      GUILayout.Button ("(Start Game)");
+      GUILayout.Button ("Start Game");
     } else {
       if (GUILayout.Button ("Start Game")) {
-        PlayerPrefs.SetInt("gamePort", gamePort);
-        PlayerPrefs.SetInt("maxPlayers", maxPlayers);
-        PlayerPrefs.SetString("gameName", gameName);
-        PlayerPrefs.SetString("playerName", playerName);
-        PlayerPrefs.Save();
-        Application.LoadLevel ("Game");
+        StartServer();
       }
     }
     GUILayout.EndHorizontal ();
@@ -69,7 +64,8 @@ public class StartupGUI : MonoBehaviour
         if (GUILayout.Button ("Join "
                               + lHost.gameName
                               + " [" + lHost.connectedPlayers + "/" + lHost.playerLimit + "] "
-                              + lHost.comment == null ? "" : (" (" + lHost.comment + ")"))) {
+                              + (lHost.comment == null ? "" : (" (" + lHost.comment + ")")))) {
+          JoinServer(lHost);
         }
       }
     }
@@ -96,6 +92,29 @@ public class StartupGUI : MonoBehaviour
     } else {
       RefreshHostList ();
     }
+  }
+
+  void StartServer() {
+    PlayerPrefs.SetString("gameMode", "server");
+    PlayerPrefs.SetInt("gamePort", gamePort);
+    PlayerPrefs.SetInt("maxPlayers", maxPlayers);
+    PlayerPrefs.SetString("gameName", gameName);
+    PlayerPrefs.SetString("playerName", playerName);
+    PlayerPrefs.Save();
+    Application.LoadLevel ("Game");
+  }
+
+  void JoinServer(HostData aHost) {
+    PlayerPrefs.SetString("gameMode", "client");
+    PlayerPrefs.SetInt("gamePort", gamePort);
+    PlayerPrefs.SetInt("maxPlayers", maxPlayers);
+    PlayerPrefs.SetString("gameName", gameName);
+    PlayerPrefs.SetString("playerName", playerName);
+    PlayerPrefs.Save();
+    GameObject lHostData = GameObject.Find("NetworkHostData");
+    lHostData.GetComponent<NetworkHostData>().hostData = aHost;
+    DontDestroyOnLoad(lHostData);
+    Application.LoadLevel ("Game");
   }
   
 }
