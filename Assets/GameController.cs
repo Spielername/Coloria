@@ -3,19 +3,52 @@ using System.Collections;
 
 public class GameController : MonoBehaviour
 {
-  public string gameMode = "server";
-  public string gameTypeName = "org.mahn42.coloria";
-  public string playerName = "Player";
-  public string gameName = "Game";
-  public int gamePort = 8042;
-  public int maxPlayers = 8;
-  public float scale = 0.5f;
-  public float scaleWidth = 10.0f;
-  public float scaleHeight = 10.0f;
-  public int towerCount = 10;
-  public int generationMode = 0; // 0 = Perlin, 1 = ImprovedPerlin
-  public GameObject towerPreFab = null;
+  [System.Serializable]
+  public class TerrainConfigTexture
+  {
+    public Texture2D texture = null;
+    public Vector2 tileOffset = Vector2.zero;
+    public Vector2 tileSize = new Vector2 (1, 1);
+  }
+
+  [System.Serializable]
+  public class TerrainConfig
+  {
+    public int mapSize = 512;
+    public int paintSize = 512;
+    public int terrainCount = 64; // 8x8
+    public float worldSize = 25;
+    public float worldHeight = 50;
+    public TerrainConfigTexture[] textures = new TerrainConfigTexture[1];
+  }
+  
+  [System.Serializable]
+  public class GameSetup
+  {
+    public string gameMode = "server";
+    public string gameTypeName = "org.mahn42.coloria";
+    public string playerName = "Player";
+    public string gameName = "Game";
+    public int gamePort = 8042;
+    public int maxPlayers = 8;
+  }
+
+  [System.Serializable]
+  public class LevelGeneration
+  {
+    public float scale = 0.5f;
+    public float scaleWidth = 10.0f;
+    public float scaleHeight = 10.0f;
+    public int towerCount = 10;
+    public int generationMode = 0; // 0 = Perlin, 1 = ImprovedPerlin, 2 = XY (for testing)
+    public GameObject towerPreFab = null;
+  }
+
+  public GameSetup gameSetup = new GameSetup ();
+  public TerrainConfig terrainConfig = new TerrainConfig ();
+  public LevelGeneration levelGeneration = new LevelGeneration ();
   public static GameController instance = null;
+  protected Terrain[,] fTerrains;
   protected float[,] fHeights;
   protected float[,,] fAlphas;
   protected float[,] fNextHeights;
@@ -30,28 +63,116 @@ public class GameController : MonoBehaviour
       // raise exception ?
     }
     instance = this;
-    if (towerPreFab == null) {
-      towerPreFab = GameObject.Find ("Tower");
+    if (levelGeneration.towerPreFab == null) {
+      levelGeneration.towerPreFab = GameObject.Find ("Tower");
     }
+    CreateTerrainGameObjects ();
     fTerrain = GameObject.Find ("Terrain").GetComponent<Terrain> ();
     fTerrainData = fTerrain.terrainData;
+    //print (fTerrainData.alphamapResolution);
 
-    gameMode = PlayerPrefs.GetString ("gameMode", gameMode);
-    gameName = PlayerPrefs.GetString ("gameName", gameName);
-    playerName = PlayerPrefs.GetString ("playerName", playerName);
-    gamePort = PlayerPrefs.GetInt ("gamePort", gamePort);
-    maxPlayers = PlayerPrefs.GetInt ("maxPlayers", maxPlayers);
+    gameSetup.gameMode = PlayerPrefs.GetString ("gameMode", gameSetup.gameMode);
+    gameSetup.gameName = PlayerPrefs.GetString ("gameName", gameSetup.gameName);
+    gameSetup.playerName = PlayerPrefs.GetString ("playerName", gameSetup.playerName);
+    gameSetup.gamePort = PlayerPrefs.GetInt ("gamePort", gameSetup.gamePort);
+    gameSetup.maxPlayers = PlayerPrefs.GetInt ("maxPlayers", gameSetup.maxPlayers);
 
-    if (gameMode.Equals ("server")) {
+    if (gameSetup.gameMode.Equals ("server")) {
       print ("run server");
-      Network.InitializeServer (maxPlayers - 1, gamePort, !Network.HavePublicAddress ());
-      MasterServer.RegisterHost (gameTypeName, gameName, "by " + playerName);
+      Network.InitializeServer (gameSetup.maxPlayers - 1, gameSetup.gamePort, !Network.HavePublicAddress ());
+      MasterServer.RegisterHost (gameSetup.gameTypeName, gameSetup.gameName, "by " + gameSetup.playerName);
       //GenerateLevel ();
     } else {
+      print ("run client");
       GameObject lHostData = GameObject.Find ("NetworkHostData");
       Network.Connect (lHostData.GetComponent<NetworkHostData> ().hostData);
       print ("run client at " + lHostData.GetComponent<NetworkHostData> ().hostData.comment);
     }
+  }
+
+  void DestroyTerrainGameObjects ()
+  {
+    if (fTerrains != null && fTerrains.Length > 0) {
+      for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
+        for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
+          Destroy (fTerrains [lx, ly].gameObject);
+        }
+      }
+      fTerrains = null;
+    }
+  }
+
+  Texture2D LoadTexture2D (string aName)
+  {
+    Texture2D lTexture2D = Resources.Load<Texture2D> (aName);
+    if (lTexture2D == null) {
+      print ("Texture2D '" + aName + "' not found!");
+    }
+    return lTexture2D;
+  }
+
+  void CreateTerrainGameObjects ()
+  {
+    DestroyTerrainGameObjects ();
+    int lsize = Mathf.FloorToInt (Mathf.Sqrt (terrainConfig.terrainCount));
+    float lhalf = (float)lsize / 2.0f;
+    fTerrains = new Terrain[lsize, lsize];
+    for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
+      for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
+        TerrainData lTerrainData = new TerrainData ();
+        lTerrainData.heightmapResolution = 512;
+        lTerrainData.size = new Vector3 (terrainConfig.worldSize, terrainConfig.worldHeight, terrainConfig.worldSize);
+        lTerrainData.baseMapResolution = 1024;
+        lTerrainData.name = "TerrainData_" + lx + "_" + ly;
+        lTerrainData.alphamapResolution = 64;
+        SplatPrototype[] lSplats = new SplatPrototype[terrainConfig.textures.Length];
+        for (int lI = 0; lI < lSplats.Length; lI++) {
+          lSplats [lI] = new SplatPrototype ();
+          lSplats [lI].texture = terrainConfig.textures [lI].texture; // LoadTexture2D("Gray0_Grid");
+          lSplats [lI].tileOffset = terrainConfig.textures [lI].tileOffset; // new Vector2(0, 0); 
+          lSplats [lI].tileSize = terrainConfig.textures [lI].tileSize; // new Vector2(1, 1);
+        }
+        /*
+        lSplats[1] = new SplatPrototype();
+        lSplats[1].texture = LoadTexture2D("Gray1_Grid");
+        lSplats[1].tileOffset = new Vector2(0, 0); 
+        lSplats[1].tileSize = new Vector2(1, 1);
+        */
+        lTerrainData.splatPrototypes = lSplats;
+        //lTerrainData.SetDetailResolution(1024, lTerrainData.detailResolutionPerPatch);
+        //AssetDatabase.CreateAsset(terrainData, "Assets/New Terrain.asset");
+        GameObject lTerrain = Terrain.CreateTerrainGameObject (lTerrainData);
+        lTerrain.transform.position = transform.position
+          + new Vector3 (((float)lx - lhalf) * terrainConfig.worldSize, terrainConfig.worldHeight / 2.0f, ((float)ly - lhalf) * terrainConfig.worldSize);
+        lTerrain.transform.parent = transform;
+        lTerrain.name = "Terrain_" + lx + "_" + ly;
+        fTerrains [lx, ly] = lTerrain.GetComponent<Terrain> ();
+      }
+    }
+    for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
+      for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
+        fTerrains [lx, ly].SetNeighbors (
+          (lx <= 0) ? null : fTerrains [lx - 1, ly], // left
+          (ly <= 0) ? null : fTerrains [lx, ly - 1], // top
+          (lx >= (fTerrains.GetLength (0) - 1)) ? null : fTerrains [lx + 1, ly], // right
+          (ly >= (fTerrains.GetLength (1) - 1)) ? null : fTerrains [lx, ly + 1]  // bottom
+        );
+      }
+    }
+  }
+
+  void OnDrawGizmos ()
+  {
+    int lsize = Mathf.FloorToInt (Mathf.Sqrt (terrainConfig.terrainCount));
+    float lhalf = (float)lsize / 2.0f;
+    for (float lx = -lhalf; lx < lhalf; lx++) {
+      for (float ly = -lhalf; ly < lhalf; ly++) {
+        Gizmos.DrawWireCube (
+          transform.position + new Vector3 (lx * terrainConfig.worldSize, terrainConfig.worldHeight / 2.0f, ly * terrainConfig.worldSize),
+          new Vector3 (terrainConfig.worldSize, terrainConfig.worldHeight, terrainConfig.worldSize));
+      }
+    }
+
   }
 
   public float[,] GetTerrainHeights (int aX, int aY, int aWidth, int aHeight)
@@ -144,7 +265,7 @@ public class GameController : MonoBehaviour
     fHeights = fTerrainData.GetHeights (0, 0, lw, lh);
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
-        fHeights [ly, lx] = 0.5f + lPerlin.Noise (lx * scaleWidth / lw, ly * scaleHeight / lh) * scale;
+        fHeights [ly, lx] = 0.5f + lPerlin.Noise (lx * levelGeneration.scaleWidth / lw, ly * levelGeneration.scaleHeight / lh) * levelGeneration.scale;
       }
     }
     DoAlphaMapByHeights ();
@@ -158,7 +279,7 @@ public class GameController : MonoBehaviour
     fHeights = fTerrainData.GetHeights (0, 0, lw, lh);
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
-        fHeights [ly, lx] = 0.5f + lPerlin.Noise (lx * scaleWidth / lw, ly * scaleHeight / lh, 0.0f) * scale;
+        fHeights [ly, lx] = 0.5f + lPerlin.Noise (lx * levelGeneration.scaleWidth / lw, ly * levelGeneration.scaleHeight / lh, 0.0f) * levelGeneration.scale;
       }
     }
     DoAlphaMapByHeights ();
@@ -168,13 +289,13 @@ public class GameController : MonoBehaviour
   {
     fTerrainData.SetHeights (0, 0, fHeights);
     fTerrainData.SetAlphamaps (0, 0, fAlphas);
-    fNextHeights = fHeights;
-    fNextAlphas = fAlphas;
+    fNextHeights = fHeights.Clone () as float[,];
+    fNextAlphas = fAlphas.Clone () as float[,,];
   }
 
   void GenerateMap ()
   {
-    switch (generationMode) {
+    switch (levelGeneration.generationMode) {
     case 0: // Perlin
       DoPerlin ();
       break;
@@ -212,8 +333,8 @@ public class GameController : MonoBehaviour
   void GenerateTowers ()
   {
     print (fTerrainData.size);
-    if (towerPreFab != null && towerCount > 0) {
-      int lcount = Mathf.FloorToInt (Mathf.Sqrt (towerCount));
+    if (levelGeneration.towerPreFab != null && levelGeneration.towerCount > 0) {
+      int lcount = Mathf.FloorToInt (Mathf.Sqrt (levelGeneration.towerCount));
       int lw = fTerrainData.heightmapWidth;
       int lh = fTerrainData.heightmapHeight;
       int lxc = lw / lcount;
@@ -256,7 +377,7 @@ public class GameController : MonoBehaviour
               fAlphas [lPos.y, lPos.x, ll] = 0.0f;
             }
           }*/
-          Instantiate (towerPreFab, lTPos, Quaternion.identity);
+          Instantiate (levelGeneration.towerPreFab, lTPos, Quaternion.identity);
         }
       }
     }
