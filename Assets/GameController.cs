@@ -7,6 +7,7 @@ public class GameController : MonoBehaviour
   public class TerrainConfigTexture
   {
     public Texture2D texture = null;
+    public Texture2D normalMap = null;
     public Vector2 tileOffset = Vector2.zero;
     public Vector2 tileSize = new Vector2 (1, 1);
   }
@@ -17,7 +18,7 @@ public class GameController : MonoBehaviour
     public int mapSize = 512;
     public int paintSize = 512;
     public int terrainCount = 64; // 8x8
-    public float worldSize = 25;
+    public float worldSize = 200;
     public float worldHeight = 50;
     public TerrainConfigTexture[] textures = new TerrainConfigTexture[1];
   }
@@ -120,30 +121,25 @@ public class GameController : MonoBehaviour
     for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
       for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
         TerrainData lTerrainData = new TerrainData ();
-        lTerrainData.heightmapResolution = 512;
-        lTerrainData.size = new Vector3 (terrainConfig.worldSize, terrainConfig.worldHeight, terrainConfig.worldSize);
-        lTerrainData.baseMapResolution = 1024;
+        lTerrainData.heightmapResolution = terrainConfig.mapSize / lsize;
+        lTerrainData.size = new Vector3 (terrainConfig.worldSize / lsize, terrainConfig.worldHeight, terrainConfig.worldSize / lsize);
+        lTerrainData.baseMapResolution = terrainConfig.mapSize / lsize * 2;
         lTerrainData.name = "TerrainData_" + lx + "_" + ly;
-        lTerrainData.alphamapResolution = 64;
+        lTerrainData.alphamapResolution = terrainConfig.paintSize / lsize;
         SplatPrototype[] lSplats = new SplatPrototype[terrainConfig.textures.Length];
         for (int lI = 0; lI < lSplats.Length; lI++) {
           lSplats [lI] = new SplatPrototype ();
           lSplats [lI].texture = terrainConfig.textures [lI].texture; // LoadTexture2D("Gray0_Grid");
+          lSplats [lI].normalMap = terrainConfig.textures[lI].normalMap;
           lSplats [lI].tileOffset = terrainConfig.textures [lI].tileOffset; // new Vector2(0, 0); 
           lSplats [lI].tileSize = terrainConfig.textures [lI].tileSize; // new Vector2(1, 1);
         }
-        /*
-        lSplats[1] = new SplatPrototype();
-        lSplats[1].texture = LoadTexture2D("Gray1_Grid");
-        lSplats[1].tileOffset = new Vector2(0, 0); 
-        lSplats[1].tileSize = new Vector2(1, 1);
-        */
         lTerrainData.splatPrototypes = lSplats;
         //lTerrainData.SetDetailResolution(1024, lTerrainData.detailResolutionPerPatch);
         //AssetDatabase.CreateAsset(terrainData, "Assets/New Terrain.asset");
         GameObject lTerrain = Terrain.CreateTerrainGameObject (lTerrainData);
         lTerrain.transform.position = transform.position
-          + new Vector3 (((float)lx - lhalf) * terrainConfig.worldSize, terrainConfig.worldHeight / 2.0f, ((float)ly - lhalf) * terrainConfig.worldSize);
+          + new Vector3 (((float)lx - lhalf) * terrainConfig.worldSize / lsize, terrainConfig.worldHeight / 2.0f, ((float)ly - lhalf) * terrainConfig.worldSize / lsize);
         lTerrain.transform.parent = transform;
         lTerrain.name = "Terrain_" + lx + "_" + ly;
         fTerrains [lx, ly] = lTerrain.GetComponent<Terrain> ();
@@ -153,9 +149,9 @@ public class GameController : MonoBehaviour
       for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
         fTerrains [lx, ly].SetNeighbors (
           (lx <= 0) ? null : fTerrains [lx - 1, ly], // left
-          (ly <= 0) ? null : fTerrains [lx, ly - 1], // top
+          (ly >= (fTerrains.GetLength (1) - 1)) ? null : fTerrains [lx, ly + 1],  // top
           (lx >= (fTerrains.GetLength (0) - 1)) ? null : fTerrains [lx + 1, ly], // right
-          (ly >= (fTerrains.GetLength (1) - 1)) ? null : fTerrains [lx, ly + 1]  // bottom
+          (ly <= 0) ? null : fTerrains [lx, ly - 1] // bottom
         );
       }
     }
@@ -168,8 +164,8 @@ public class GameController : MonoBehaviour
     for (float lx = -lhalf; lx < lhalf; lx++) {
       for (float ly = -lhalf; ly < lhalf; ly++) {
         Gizmos.DrawWireCube (
-          transform.position + new Vector3 (lx * terrainConfig.worldSize, terrainConfig.worldHeight / 2.0f, ly * terrainConfig.worldSize),
-          new Vector3 (terrainConfig.worldSize, terrainConfig.worldHeight, terrainConfig.worldSize));
+          transform.position + new Vector3 (lx * terrainConfig.worldSize / lsize, terrainConfig.worldHeight / 2.0f, ly * terrainConfig.worldSize / lsize),
+          new Vector3 (terrainConfig.worldSize / lsize, terrainConfig.worldHeight, terrainConfig.worldSize / lsize));
       }
     }
 
@@ -291,6 +287,19 @@ public class GameController : MonoBehaviour
     fTerrainData.SetAlphamaps (0, 0, fAlphas);
     fNextHeights = fHeights.Clone () as float[,];
     fNextAlphas = fAlphas.Clone () as float[,,];
+    int lw = terrainConfig.mapSize / fTerrains.GetLength(0);
+    int lh = terrainConfig.mapSize / fTerrains.GetLength(1);
+    float[,] lHeights = new float[lw + 1, lh + 1];
+    for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
+      for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
+        for (int lxx = 0; lxx < lHeights.GetLength(1); lxx++) {
+          for (int lyy = 0; lyy < lHeights.GetLength(0); lyy++) {
+            lHeights[lyy, lxx] = fNextHeights[ly * lh + lyy, lx * lw + lxx];
+          }
+        }
+        fTerrains [lx, ly].terrainData.SetHeights(0,0,lHeights);
+      }
+    }
   }
 
   void GenerateMap ()
