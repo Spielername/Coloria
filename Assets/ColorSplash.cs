@@ -129,10 +129,9 @@ public class ColorSplash : MonoBehaviour
   void OnCollisionEnter (Collision collision)
   {
     foreach (ContactPoint contact in collision.contacts) {
-      if (contact.otherCollider.gameObject.name.Equals ("Terrain")) {
+      if (contact.otherCollider.gameObject.CompareTag("Terrain")) {
         fCollisionPoint = contact.point;
-      }
-      if (contact.otherCollider.gameObject.CompareTag ("TurmDetector")) {
+      } else if (contact.otherCollider.gameObject.CompareTag ("TurmDetector")) {
         print ("Turm getroffen!");
       }
     }
@@ -141,7 +140,7 @@ public class ColorSplash : MonoBehaviour
   void OnCollisionStay (Collision collisionInfo)
   {
     foreach (ContactPoint contact in collisionInfo.contacts) {
-      if (contact.otherCollider.gameObject.name.Equals ("Terrain")) {
+      if (contact.otherCollider.gameObject.CompareTag ("Terrain")) {
         fCollisionPoint = contact.point;
       }
     }
@@ -150,7 +149,7 @@ public class ColorSplash : MonoBehaviour
   void OnCollisionExit (Collision collisionInfo)
   {
     foreach (ContactPoint contact in collisionInfo.contacts) {
-      if (contact.otherCollider.gameObject.name.Equals ("Terrain")) {
+      if (contact.otherCollider.gameObject.CompareTag ("Terrain")) {
         fCollisionPoint = Vector3.zero;
       }
     }

@@ -25,7 +25,7 @@ public class ParticleSplash : MonoBehaviour
   void OnCollisionEnter (Collision collision)
   {
     foreach (ContactPoint contact in collision.contacts) {
-      if (contact.otherCollider.gameObject.name.Equals ("Terrain")) {
+      if (contact.otherCollider.gameObject.CompareTag ("Terrain")) {
         fCollisionPoint = contact.point;
         
         Quaternion rot = Quaternion.FromToRotation (Vector3.up, contact.normal);

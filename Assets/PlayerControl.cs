@@ -4,7 +4,7 @@ using System.Collections;
 public class PlayerControl : MonoBehaviour
 {
 
-  public GameObject ground = null;
+  //public GameObject ground = null;
   public GameObject bullet = null;
   public float speed = 100.0f;
   public float power = 100.0f;
@@ -16,17 +16,17 @@ public class PlayerControl : MonoBehaviour
   protected Transform fLader = null;
   protected float fStartFireTime = 0.0f;
   protected bool fLoad = false;
-  protected TerrainData fTerrainData = null;
-  protected Terrain fTerrain = null;
+  //protected TerrainData fTerrainData = null;
+  //protected Terrain fTerrain = null;
 
   // Use this for initialization
   void Start ()
   {
-    if (ground == null) {
-      ground = GameObject.Find ("Terrain");
-    }
-    fTerrain = ground.GetComponent<Terrain> ();
-    fTerrainData = fTerrain.terrainData;
+    //if (ground == null) {
+    //  ground = GameObject.Find ("Terrain");
+    //}
+    //fTerrain = ground.GetComponent<Terrain> ();
+    //fTerrainData = fTerrain.terrainData;
     fKatapult = transform.FindChild ("Katapult");
     fRohr = fKatapult.transform.FindChild ("Rohr");
     fStartPos = fRohr.FindChild ("StartPos");
@@ -66,17 +66,17 @@ public class PlayerControl : MonoBehaviour
     }
     {
       Vector3 lPos = transform.position;
-      float lMax = fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, 1));
-      float lY = fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, 1));
+      float lMax = GameController.instance.SampleHeight(transform.position + new Vector3 (-1, 0, 1)); // fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, 1));
+      float lY = GameController.instance.SampleHeight(transform.position + new Vector3 (1, 0, 1)); // fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, 1));
       if (lY > lMax)
         lMax = lY;
-      lY = fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, -1));
+      lY = GameController.instance.SampleHeight(transform.position + new Vector3 (1, 0, -1)); // fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, -1));
       if (lY > lMax)
         lMax = lY;
-      lY = fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, -1));
+      lY = GameController.instance.SampleHeight(transform.position + new Vector3 (-1, 0, -1)); // fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, -1));
       if (lY > lMax)
         lMax = lY;
-      lY = fTerrain.SampleHeight (transform.position);
+      lY = GameController.instance.SampleHeight(transform.position); // fTerrain.SampleHeight (transform.position);
       if (lY > lMax)
         lMax = lY;
       lPos.y = lMax + 0.5f;
