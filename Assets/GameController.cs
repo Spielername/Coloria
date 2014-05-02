@@ -246,10 +246,10 @@ public class GameController : MonoBehaviour
 
   public void SetTerrainHeights (int aX, int aY, float[,] aHeights)
   {
-    int ltsx = Mathf.Clamp(aX / fTerrainPartMapSize, 0, fTerrainPartDimCount - 1);
-    int ltsy = Mathf.Clamp(aY / fTerrainPartMapSize, 0, fTerrainPartDimCount - 1);
-    int ltex = Mathf.Clamp((aX + aHeights.GetLength (1) - 1) / fTerrainPartMapSize, ltsx, fTerrainPartDimCount - 1);
-    int ltey = Mathf.Clamp((aY + aHeights.GetLength (0) - 1) / fTerrainPartMapSize, ltsy, fTerrainPartDimCount - 1);
+    int ltsx = Mathf.Clamp (aX / fTerrainPartMapSize, 0, fTerrainPartDimCount - 1);
+    int ltsy = Mathf.Clamp (aY / fTerrainPartMapSize, 0, fTerrainPartDimCount - 1);
+    int ltex = Mathf.Clamp ((aX + aHeights.GetLength (1) - 1) / fTerrainPartMapSize, ltsx, fTerrainPartDimCount - 1);
+    int ltey = Mathf.Clamp ((aY + aHeights.GetLength (0) - 1) / fTerrainPartMapSize, ltsy, fTerrainPartDimCount - 1);
     for (int ltx = ltsx; ltx <= ltex; ltx++) {
       for (int lty = ltsy; lty <= ltey; lty++) {
         int lpsx = aX - ltx * fTerrainPartMapSize;
@@ -364,7 +364,13 @@ public class GameController : MonoBehaviour
         fTerrains [ltx, lty].terrainData.SetAlphamaps (lpsx, lpsy, lAlphas);
       }
     }
-    //fTerrainData.SetAlphamaps (aX, aY, aAlphas);
+    for (int lx = 0; lx< aAlphas.GetLength(1); lx++) {
+      for (int ly = 0; ly< aAlphas.GetLength(0); ly++) {
+        for (int ll = 0; ll < fTerrainPartTextureCount; ll++) {
+          fAlphas [aY + ly, aX + lx, ll] = aAlphas [ly, lx, ll];
+        }
+      }
+    }
   }
 
   public int GetAlphaMapLayerCount ()
