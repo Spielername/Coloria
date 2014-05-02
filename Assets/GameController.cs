@@ -56,6 +56,8 @@ public class GameController : MonoBehaviour
   protected float[,,] fNextAlphas;
   protected Terrain fTerrain = null;
   protected TerrainData fTerrainData = null;
+  protected int fTerrainPartMapSize = 64;
+  protected int fTerrainPartPaintSize = 64;
 
   // Use this for initialization
   void Start ()
@@ -118,19 +120,21 @@ public class GameController : MonoBehaviour
     int lsize = Mathf.FloorToInt (Mathf.Sqrt (terrainConfig.terrainCount));
     float lhalf = (float)lsize / 2.0f;
     fTerrains = new Terrain[lsize, lsize];
+    fTerrainPartMapSize = terrainConfig.mapSize / lsize;
+    fTerrainPartPaintSize = terrainConfig.paintSize / lsize;
     for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
       for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
         TerrainData lTerrainData = new TerrainData ();
-        lTerrainData.heightmapResolution = terrainConfig.mapSize / lsize;
+        lTerrainData.heightmapResolution = fTerrainPartMapSize;
         lTerrainData.size = new Vector3 (terrainConfig.worldSize / lsize, terrainConfig.worldHeight, terrainConfig.worldSize / lsize);
         lTerrainData.baseMapResolution = terrainConfig.mapSize / lsize * 2;
         lTerrainData.name = "TerrainData_" + lx + "_" + ly;
-        lTerrainData.alphamapResolution = terrainConfig.paintSize / lsize;
+        lTerrainData.alphamapResolution = fTerrainPartPaintSize;
         SplatPrototype[] lSplats = new SplatPrototype[terrainConfig.textures.Length];
         for (int lI = 0; lI < lSplats.Length; lI++) {
           lSplats [lI] = new SplatPrototype ();
           lSplats [lI].texture = terrainConfig.textures [lI].texture; // LoadTexture2D("Gray0_Grid");
-          lSplats [lI].normalMap = terrainConfig.textures[lI].normalMap;
+          lSplats [lI].normalMap = terrainConfig.textures [lI].normalMap;
           lSplats [lI].tileOffset = terrainConfig.textures [lI].tileOffset; // new Vector2(0, 0); 
           lSplats [lI].tileSize = terrainConfig.textures [lI].tileSize; // new Vector2(1, 1);
         }
@@ -139,7 +143,7 @@ public class GameController : MonoBehaviour
         //AssetDatabase.CreateAsset(terrainData, "Assets/New Terrain.asset");
         GameObject lTerrain = Terrain.CreateTerrainGameObject (lTerrainData);
         lTerrain.transform.position = transform.position
-          + new Vector3 (((float)lx - lhalf) * terrainConfig.worldSize / lsize, terrainConfig.worldHeight / 2.0f, ((float)ly - lhalf) * terrainConfig.worldSize / lsize);
+          + new Vector3 (((float)lx - lhalf) * terrainConfig.worldSize / lsize, 0.0f, ((float)ly - lhalf) * terrainConfig.worldSize / lsize);
         lTerrain.transform.parent = transform;
         lTerrain.name = "Terrain_" + lx + "_" + ly;
         fTerrains [lx, ly] = lTerrain.GetComponent<Terrain> ();
@@ -160,12 +164,13 @@ public class GameController : MonoBehaviour
   void OnDrawGizmos ()
   {
     int lsize = Mathf.FloorToInt (Mathf.Sqrt (terrainConfig.terrainCount));
+    float lws = terrainConfig.worldSize / lsize;
     float lhalf = (float)lsize / 2.0f;
     for (float lx = -lhalf; lx < lhalf; lx++) {
       for (float ly = -lhalf; ly < lhalf; ly++) {
         Gizmos.DrawWireCube (
-          transform.position + new Vector3 (lx * terrainConfig.worldSize / lsize, terrainConfig.worldHeight / 2.0f, ly * terrainConfig.worldSize / lsize),
-          new Vector3 (terrainConfig.worldSize / lsize, terrainConfig.worldHeight, terrainConfig.worldSize / lsize));
+          transform.position + new Vector3 (lx * lws + lws / 2.0f, terrainConfig.worldHeight / 2.0f, ly * lws + lws / 2.0f),
+          new Vector3 (lws, terrainConfig.worldHeight, lws));
       }
     }
 
@@ -178,6 +183,51 @@ public class GameController : MonoBehaviour
 
   public void SetTerrainHeights (int aX, int aY, float[,] aHeights)
   {
+    int ltsx = aX / fTerrainPartMapSize;
+    int ltsy = aY / fTerrainPartMapSize;
+    int ltex = (aX + aHeights.GetLength (1) - 1) / fTerrainPartMapSize;
+    int ltey = (aY + aHeights.GetLength (0) - 1) / fTerrainPartMapSize;
+    for (int ltx = ltsx; ltx <= ltex; ltx++) {
+      for (int lty = ltsy; lty <= ltey; lty++) {
+        int lpsx = aX - ltx * fTerrainPartMapSize;
+        int lpex = (aX + aHeights.GetLength (1)) - ltx * fTerrainPartMapSize;
+        if (lpex > fTerrainPartMapSize) {
+          lpex = fTerrainPartMapSize;
+        }
+        if (lpsx < 0) {
+          lpsx = 0;
+        }
+        int lpsy = aY - lty * fTerrainPartMapSize;
+        int lpey = (aY + aHeights.GetLength (0)) - lty * fTerrainPartMapSize;
+        if (lpey > fTerrainPartMapSize) {
+          lpey = fTerrainPartMapSize;
+        }
+        if (lpsy < 0) {
+          lpsy = 0;
+        }
+        print ("aX=" + aX + " aY=" + aY + " aW=" + aHeights.GetLength (1) + " aH=" + aHeights.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
+        int lzx = 0;
+        int lzy = 0;
+        if (ltx < ltex) lzx = 1;
+        if (lty < ltey) lzy = 1;
+        float[,] lHeights = new float[lpey - lpsy + lzy, lpex - lpsx + lzx];
+        for (int lx = lpsx; lx < lpex + lzx; lx++) {
+          for (int ly = lpsy; ly < lpey + lzy; ly++) {
+            int lxx = lx + ltx * fTerrainPartMapSize - aX;
+            int lyy = ly + lty * fTerrainPartMapSize - aY;
+            float lV = 0.0f;
+            try {
+              lV = aHeights [lyy, lxx];
+            } catch (System.Exception lE) {
+              print ("[" + lyy + "," + lxx + "]" + lE.Message);
+              return;
+            }
+            lHeights [ly - lpsy, lx - lpsx] = lV;
+          }
+        }
+        fTerrains [ltx, lty].terrainData.SetHeights (lpsx, lpsy, lHeights);
+      }
+    }
     fTerrainData.SetHeights (aX, aY, aHeights);
   }
   
@@ -287,17 +337,17 @@ public class GameController : MonoBehaviour
     fTerrainData.SetAlphamaps (0, 0, fAlphas);
     fNextHeights = fHeights.Clone () as float[,];
     fNextAlphas = fAlphas.Clone () as float[,,];
-    int lw = terrainConfig.mapSize / fTerrains.GetLength(0);
-    int lh = terrainConfig.mapSize / fTerrains.GetLength(1);
+    int lw = terrainConfig.mapSize / fTerrains.GetLength (0);
+    int lh = terrainConfig.mapSize / fTerrains.GetLength (1);
     float[,] lHeights = new float[lw + 1, lh + 1];
     for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
       for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
         for (int lxx = 0; lxx < lHeights.GetLength(1); lxx++) {
           for (int lyy = 0; lyy < lHeights.GetLength(0); lyy++) {
-            lHeights[lyy, lxx] = fNextHeights[ly * lh + lyy, lx * lw + lxx];
+            lHeights [lyy, lxx] = fNextHeights [ly * lh + lyy, lx * lw + lxx];
           }
         }
-        fTerrains [lx, ly].terrainData.SetHeights(0,0,lHeights);
+        fTerrains [lx, ly].terrainData.SetHeights (0, 0, lHeights);
       }
     }
   }
