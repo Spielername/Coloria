@@ -3,7 +3,6 @@ using System.Collections;
 
 public class ColorSplash : MonoBehaviour
 {
-  //public GameObject ground = null;
   public int terrainTextureNumber = 3;
   public float scaleDownFactor = 0.9f;
   public float splashFactor = 0.002f;
@@ -14,22 +13,11 @@ public class ColorSplash : MonoBehaviour
   public float maxLiveTime = 15.0f;
   protected Vector3 fCollisionPoint = Vector3.zero;
   protected Vector3 fLastCollisionPoint = Vector3.zero;
-  //protected Terrain fTerrain = null;
 
   // Use this for initialization
   void Start ()
   {
-    //if (ground == null) {
-    //  ground = GameObject.Find ("Terrain");
-    //}
-    //fTerrain = ground.GetComponent<Terrain> ();
     Destroy(gameObject, maxLiveTime);
-    /*
-    string path = AssetDatabase.GetAssetPath(splashPaintTexture);
-    TextureImporter ti = (TextureImporter) TextureImporter.GetAtPath(path);
-    ti.isReadable = true;
-    AssetDatabase.ImportAsset(path);
-    */
   }
   
   // Update is called once per frame
@@ -46,9 +34,6 @@ public class ColorSplash : MonoBehaviour
         Destroy (gameObject);
       }
     }
-    //if (transform.position.y < ground.transform.position.y - fTerrain.terrainData.size.y) {
-    //  Destroy (gameObject);
-    //}
   }
 
   void SetTextureOnMap (float[,,] aAlphas, int aX, int aY, float aValue)
@@ -90,7 +75,7 @@ public class ColorSplash : MonoBehaviour
     int lY = Mathf.FloorToInt (lPos1.y);
     int lW = Mathf.FloorToInt (lPos2.x) - lX;
     int lH = Mathf.FloorToInt (lPos2.y) - lY;
-    float[,,] lAlphas = GameController.instance.GetTerrainAlphas (lX, lY, lW, lH); //fTerrain.terrainData.GetAlphamaps (lX, lY, lW, lH);
+    float[,,] lAlphas = GameController.instance.GetTerrainAlphas (lX, lY, lW, lH);
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
         Color lC = splashPaintTexture.GetPixelBilinear((float)lxx / (lW - 1.0f), (float)lyy / (lH - 1.0f));
@@ -122,7 +107,7 @@ public class ColorSplash : MonoBehaviour
       }
     }
     if (lModified) {
-      GameController.instance.SetTerrainAlphas (lX, lY, lAlphas); //fTerrain.terrainData.SetAlphamaps (lX, lY, lAlphas);
+      GameController.instance.SetTerrainAlphas (lX, lY, lAlphas);
     }
   }
 
@@ -134,18 +119,29 @@ public class ColorSplash : MonoBehaviour
     int lY = Mathf.FloorToInt (lPos1.y);
     int lW = Mathf.FloorToInt (lPos2.x) - lX;
     int lH = Mathf.FloorToInt (lPos2.y) - lY;
-    float[,] lHeights = GameController.instance.GetTerrainHeights (lX, lY, lW, lH); // fTerrain.terrainData.GetHeights (lX, lY, lW, lH);
+    float[,] lHeights = GameController.instance.GetTerrainHeights (lX, lY, lW, lH);
+    bool lModified = false;
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
         float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
         float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
         float lS = Mathf.Cos (lsx) * Mathf.Cos (lsy);
         if (lS > 0.0f) {
-          lHeights [lyy, lxx] += splashFactor * lS;
+          float lV = lHeights [lyy, lxx] + splashFactor * lS;
+          float lLV = GameController.instance.GetTerrainLevelHeigth(lX + lxx, lY + lyy);
+          if (lV < lLV) {
+            lV = lLV;
+          }
+          if (lHeights[lyy, lxx] != lV) {
+            lHeights[lyy, lxx] = lV;
+            lModified = true;
+          }
         }
       }
     }
-    GameController.instance.SetTerrainHeights (lX, lY, lHeights); //fTerrain.terrainData.SetHeights (lX, lY, lHeights);
+    if (lModified) {
+      GameController.instance.SetTerrainHeights (lX, lY, lHeights);
+    }
   }
   
   void OnCollisionEnter (Collision collision)

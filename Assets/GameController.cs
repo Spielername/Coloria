@@ -176,10 +176,10 @@ public class GameController : MonoBehaviour
           lSplats [++lII] = new SplatPrototype ();
           lSplats [lII].texture = terrainConfig.playerTextures [lI].borderTexture.texture;
           if (lSplats [lII].texture == null) {
-            lSplats [lII].texture = lSplats [lII - 1].texture; //terrainConfig.playerTextures [lI].baseTexture.texture;
-            lSplats [lII].normalMap = lSplats [lII - 1].normalMap; //terrainConfig.playerTextures [lI].baseTexture.normalMap;
-            lSplats [lII].tileOffset = lSplats [lII - 1].tileOffset; // terrainConfig.playerTextures [lI].baseTexture.tileOffset;
-            lSplats [lII].tileSize = lSplats [lII - 1].tileSize; //terrainConfig.playerTextures [lI].baseTexture.tileSize;
+            lSplats [lII].texture = lSplats [lII - 1].texture;
+            lSplats [lII].normalMap = lSplats [lII - 1].normalMap;
+            lSplats [lII].tileOffset = lSplats [lII - 1].tileOffset;
+            lSplats [lII].tileSize = lSplats [lII - 1].tileSize;
           } else {
             lSplats [lII].normalMap = terrainConfig.playerTextures [lI].borderTexture.normalMap;
             lSplats [lII].tileOffset = terrainConfig.playerTextures [lI].borderTexture.tileOffset;
@@ -232,6 +232,16 @@ public class GameController : MonoBehaviour
     return fTerrains [ltx, lty].SampleHeight (aPos);
   }
 
+  public float GetTerrainHeigth (int aX, int aY)
+  {
+    return fHeights [aY, aX];
+  }
+
+  public float GetTerrainLevelHeigth (int aX, int aY)
+  {
+    return fLevelHeights [aY, aX];
+  }
+  
   public float[,] GetTerrainHeights (int aX, int aY, int aWidth, int aHeight)
   {
     float [,] lHeights = new float[aWidth + 1, aHeight + 1];
@@ -241,7 +251,6 @@ public class GameController : MonoBehaviour
       }
     }
     return lHeights;
-    //return fTerrainData.GetHeights (aX, aY, aWidth, aHeight);
   }
 
   public void SetTerrainHeights (int aX, int aY, float[,] aHeights)
@@ -268,7 +277,6 @@ public class GameController : MonoBehaviour
         if (lpsy < 0) {
           lpsy = 0;
         }
-        //print ("aX=" + aX + " aY=" + aY + " aW=" + aHeights.GetLength (1) + " aH=" + aHeights.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
         int lzx = 0;
         int lzy = 0;
         if (ltx < ltex)
@@ -299,6 +307,24 @@ public class GameController : MonoBehaviour
         fHeights [aY + ly, aX + lx] = aHeights [ly, lx];
       }
     }
+  }
+  
+  public float[] GetTerrainAlpha (int aX, int aY)
+  {
+    float[] lAlphas = new float[fTerrainPartTextureCount];
+    for (int ll = 0; ll < fTerrainPartTextureCount; ll++) {
+      lAlphas [ll] = fAlphas [aY, aX, ll];
+    }
+    return lAlphas;
+  }
+  
+  public float[] GetTerrainLevelAlpha (int aX, int aY)
+  {
+    float[] lAlphas = new float[fTerrainPartTextureCount];
+    for (int ll = 0; ll < fTerrainPartTextureCount; ll++) {
+      lAlphas [ll] = fLevelAlphas [aY, aX, ll];
+    }
+    return lAlphas;
   }
   
   public float[,,] GetTerrainAlphas (int aX, int aY, int aWidth, int aHeight)
@@ -338,7 +364,6 @@ public class GameController : MonoBehaviour
         if (lpsy < 0) {
           lpsy = 0;
         }
-        //print ("aX=" + aX + " aY=" + aY + " aW=" + aAlphas.GetLength (1) + " aH=" + aAlphas.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
         int lzx = 0;
         int lzy = 0;
         //if (ltx < ltex) lzx = 1;
@@ -381,27 +406,28 @@ public class GameController : MonoBehaviour
   public Vector2 ConvertToAlphaMapPoint (Vector3 aPos)
   {
     Vector3 lPos = aPos - (transform.position - new Vector3 (terrainConfig.worldSize / 2.0f, 0, terrainConfig.worldSize / 2.0f));
-    lPos.x = lPos.x / terrainConfig.worldSize * terrainConfig.paintSize;  //fTerrain.terrainData.size.x * fTerrain.terrainData.alphamapWidth;
-    lPos.z = lPos.z / terrainConfig.worldSize * terrainConfig.paintSize;  //fTerrain.terrainData.size.z * fTerrain.terrainData.alphamapHeight;
+    lPos.x = lPos.x / terrainConfig.worldSize * terrainConfig.paintSize;
+    lPos.z = lPos.z / terrainConfig.worldSize * terrainConfig.paintSize;
     return new Vector2 (lPos.x, lPos.z);
   }
   
   public Vector2 ConvertToHeightMapPoint (Vector3 aPos)
   {
     Vector3 lPos = aPos - (transform.position - new Vector3 (terrainConfig.worldSize / 2.0f, 0, terrainConfig.worldSize / 2.0f));
-    lPos.x = lPos.x / terrainConfig.worldSize * terrainConfig.mapSize;  //fTerrain.terrainData.size.x * fTerrain.terrainData.heightmapWidth;
-    lPos.z = lPos.z / terrainConfig.worldSize * terrainConfig.mapSize;  //fTerrain.terrainData.size.z * fTerrain.terrainData.heightmapHeight;
+    lPos.x = lPos.x / terrainConfig.worldSize * terrainConfig.mapSize;
+    lPos.z = lPos.z / terrainConfig.worldSize * terrainConfig.mapSize;
     return new Vector2 (lPos.x, lPos.z);
   }
   
   void DoAlphaMapByHeights ()
   {
-    int lw = terrainConfig.paintSize; // fTerrainData.alphamapWidth;
-    int lh = terrainConfig.paintSize; // fTerrainData.alphamapHeight;
-    //fAlphas = fTerrainData.GetAlphamaps (0, 0, lw, lh);
+    int lw = terrainConfig.paintSize;
+    int lh = terrainConfig.paintSize;
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
-        int lt = Mathf.FloorToInt (fHeights [ly, lx] * terrainConfig.textures.Length);
+        float lheight = fHeights [ly, lx] * terrainConfig.textures.Length;
+        int lt = Mathf.FloorToInt (lheight);
+        float lc = Mathf.Ceil (lheight);
         for (int ll = 0; ll < fTerrainPartTextureCount; ll++) {
           if (ll == lt) {
             fAlphas [ly, lx, ll] = 1.0f;
@@ -415,9 +441,8 @@ public class GameController : MonoBehaviour
 
   void DoXY ()
   {
-    int lw = terrainConfig.mapSize; // fTerrainData.heightmapWidth;
-    int lh = terrainConfig.mapSize; // fTerrainData.heightmapHeight;
-    //fHeights = fTerrainData.GetHeights (0, 0, lw, lh);
+    int lw = terrainConfig.mapSize;
+    int lh = terrainConfig.mapSize;
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
         fHeights [ly, lx] = (float)ly / lw;
@@ -429,9 +454,8 @@ public class GameController : MonoBehaviour
   void DoPerlin ()
   {
     Perlin lPerlin = new Perlin ();
-    int lw = terrainConfig.mapSize; //fTerrainData.heightmapWidth;
-    int lh = terrainConfig.mapSize; //fTerrainData.heightmapHeight;
-    //fHeights = fTerrainData.GetHeights (0, 0, lw, lh);
+    int lw = terrainConfig.mapSize;
+    int lh = terrainConfig.mapSize;
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
         fHeights [ly, lx] = 0.5f + lPerlin.Noise (lx * levelGeneration.scaleWidth / lw, ly * levelGeneration.scaleHeight / lh) * levelGeneration.scale;
@@ -443,9 +467,8 @@ public class GameController : MonoBehaviour
   void DoImprovedPerlin ()
   {
     ImprovedPerlin lPerlin = new ImprovedPerlin ();
-    int lw = terrainConfig.mapSize; //fTerrainData.heightmapWidth;
-    int lh = terrainConfig.mapSize; //fTerrainData.heightmapHeight;
-    //fHeights = fTerrainData.GetHeights (0, 0, lw, lh);
+    int lw = terrainConfig.mapSize;
+    int lh = terrainConfig.mapSize;
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
         fHeights [ly, lx] = 0.5f + lPerlin.Noise (lx * levelGeneration.scaleWidth / lw, ly * levelGeneration.scaleHeight / lh, 0.0f) * levelGeneration.scale;
@@ -456,27 +479,10 @@ public class GameController : MonoBehaviour
   
   void SetMap ()
   {
-    //fTerrainData.SetHeights (0, 0, fHeights);
-    //fTerrainData.SetAlphamaps (0, 0, fAlphas);
     fLevelHeights = fHeights.Clone () as float[,];
     fLevelAlphas = fAlphas.Clone () as float[,,];
     SetTerrainHeights (0, 0, fHeights);
     SetTerrainAlphas (0, 0, fAlphas);
-    /*
-    int lw = terrainConfig.mapSize / fTerrains.GetLength (0);
-    int lh = terrainConfig.mapSize / fTerrains.GetLength (1);
-    float[,] lHeights = new float[lw + 1, lh + 1];
-    for (int lx = 0; lx < fTerrains.GetLength(0); lx++) {
-      for (int ly = 0; ly < fTerrains.GetLength(1); ly++) {
-        for (int lxx = 0; lxx < lHeights.GetLength(1); lxx++) {
-          for (int lyy = 0; lyy < lHeights.GetLength(0); lyy++) {
-            lHeights [lyy, lxx] = fHeights [ly * lh + lyy, lx * lw + lxx];
-          }
-        }
-        fTerrains [lx, ly].terrainData.SetHeights (0, 0, lHeights);
-      }
-    }
-    */
   }
 
   void GenerateMap ()
@@ -485,10 +491,10 @@ public class GameController : MonoBehaviour
     case 0: // Perlin
       DoPerlin ();
       break;
-    case 1: // Perlin
+    case 1: // ImprovedPerlin
       DoImprovedPerlin ();
       break;
-    case 2:
+    case 2: // Schräge 
       DoXY ();
       break;
     }
@@ -505,9 +511,9 @@ public class GameController : MonoBehaviour
     float ly = fHeights [aY, aX];
     return transform.position - new Vector3 (terrainConfig.worldSize / 2.0f, 0, terrainConfig.worldSize / 2.0f)
       + new Vector3 (
-        (float)aX / (float)terrainConfig.mapSize * terrainConfig.worldSize, // fTerrainData.heightmapWidth * fTerrainData.size.x,
-        ly * terrainConfig.worldHeight, // fTerrainData.size.y,
-        (float)aY / (float)terrainConfig.mapSize * terrainConfig.worldSize // fTerrainData.heightmapHeight * fTerrainData.size.z
+        (float)aX / (float)terrainConfig.mapSize * terrainConfig.worldSize,
+        ly * terrainConfig.worldHeight,
+        (float)aY / (float)terrainConfig.mapSize * terrainConfig.worldSize
     );
   }
 
@@ -515,8 +521,8 @@ public class GameController : MonoBehaviour
   {
     if (levelGeneration.towerPreFab != null && levelGeneration.towerCount > 0) {
       int lcount = Mathf.FloorToInt (Mathf.Sqrt (levelGeneration.towerCount));
-      int lw = terrainConfig.mapSize; //fTerrainData.heightmapWidth;
-      int lh = terrainConfig.mapSize; //fTerrainData.heightmapHeight;
+      int lw = terrainConfig.mapSize;
+      int lh = terrainConfig.mapSize;
       int lxc = lw / lcount;
       int lyc = lh / lcount;
       int lxm = 0;
