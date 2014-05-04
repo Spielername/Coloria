@@ -10,6 +10,7 @@ public class ColorSplash : MonoBehaviour
   public float minSize = 0.1f;
   public float splashPaintSize = 4.0f;
   public float splashHeightSize = 4.0f;
+  public Texture2D splashPaintTexture;
   public float maxLiveTime = 15.0f;
   protected Vector3 fCollisionPoint = Vector3.zero;
   protected Vector3 fLastCollisionPoint = Vector3.zero;
@@ -23,6 +24,12 @@ public class ColorSplash : MonoBehaviour
     //}
     //fTerrain = ground.GetComponent<Terrain> ();
     Destroy(gameObject, maxLiveTime);
+    /*
+    string path = AssetDatabase.GetAssetPath(splashPaintTexture);
+    TextureImporter ti = (TextureImporter) TextureImporter.GetAtPath(path);
+    ti.isReadable = true;
+    AssetDatabase.ImportAsset(path);
+    */
   }
   
   // Update is called once per frame
@@ -86,6 +93,19 @@ public class ColorSplash : MonoBehaviour
     float[,,] lAlphas = GameController.instance.GetTerrainAlphas (lX, lY, lW, lH); //fTerrain.terrainData.GetAlphamaps (lX, lY, lW, lH);
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
+        Color lC = splashPaintTexture.GetPixelBilinear((float)lxx / (lW - 1.0f), (float)lyy / (lH - 1.0f));
+        //float lsx = (lxx - (lW / 2.0f)) / lW;
+        //float lsy = (lyy - (lH / 2.0f)) / lH;
+        float lS = 1.0f - lC.a;
+        if (lS > 0.0f) {
+          lS += lAlphas [lyy, lxx, terrainTextureNumber];
+          if (lS > 1.0f) {
+            lS = 1.0f;
+          }
+          lModified = lModified || lAlphas [lyy, lxx, terrainTextureNumber] != lS;
+          SetTextureOnMap (lAlphas, lxx, lyy, lS);
+        }
+        /*
         float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
         float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
         float lS = Mathf.Cos (lsx) * Mathf.Cos (lsy);
@@ -97,6 +117,8 @@ public class ColorSplash : MonoBehaviour
           lModified = lModified || lAlphas [lyy, lxx, terrainTextureNumber] != lS;
           SetTextureOnMap (lAlphas, lxx, lyy, lS);
         }
+        */
+
       }
     }
     if (lModified) {
