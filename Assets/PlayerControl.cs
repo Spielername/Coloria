@@ -90,7 +90,7 @@ public class PlayerControl : MonoBehaviour
         lMax = lY;
       lPos.y = lMax + 0.5f;
       if (lS != 0.0f) {
-        lPos = lPos + transform.forward * lS;
+        lPos = lPos + transform.forward * Mathf.Clamp(lS, -0.5f, 0.5f);
       }
       transform.position = lPos + transform.forward * lS;
     }
