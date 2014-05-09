@@ -91,7 +91,7 @@ public class DemoTerrainGenerator : MonoBehaviour
     fNewAlphas = fTerrainData.GetAlphamaps (0, 0, lw, lh);
     for (int lx = 0; lx < lw; lx++) {
       for (int ly = 0; ly < lh; ly++) {
-        int lt = Mathf.FloorToInt (fNewHeights [lx, ly] * fTerrainData.alphamapLayers);
+        int lt = Mathf.FloorToInt (fNewHeights [lx * 4, ly * 4] * fTerrainData.alphamapLayers);
         for (int ll = 0; ll < fTerrainData.alphamapLayers; ll++) {
           if (ll == lt) {
             fNewAlphas [lx, ly, ll] = 1.0f;

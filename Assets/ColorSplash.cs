@@ -3,7 +3,9 @@ using System.Collections;
 
 public class ColorSplash : MonoBehaviour
 {
-  public int terrainTextureNumber = 3;
+  public string pencilName = "simpleSplash";
+  public int player = 1;
+  //public int terrainTextureNumber = 3;
   public float scaleDownFactor = 0.9f;
   public float splashFactor = 0.002f;
   public float minSize = 0.1f;
@@ -36,6 +38,7 @@ public class ColorSplash : MonoBehaviour
     }
   }
 
+  /*
   void SetTextureOnMap (float[,,] aAlphas, int aX, int aY, float aValue)
   {
     float lV = aAlphas [aY, aX, terrainTextureNumber];
@@ -65,7 +68,15 @@ public class ColorSplash : MonoBehaviour
       }
     }
   }
-  
+  */
+
+  void PaintOnMap ()
+  {
+    //GameController.instance.PaintOnMap(splashPaintTexture, terrainTextureNumber, fCollisionPoint, transform.localScale, splashPaintSize);
+    GameController.instance.PaintOnMap(pencilName, player, fCollisionPoint, transform.localScale, splashPaintSize);
+  }
+
+  /*
   void PaintOnMap ()
   {
     bool lModified = false;
@@ -79,8 +90,6 @@ public class ColorSplash : MonoBehaviour
     for (int lxx = 0; lxx < (lW - 1); lxx++) {
       for (int lyy = 0; lyy < (lH - 1); lyy++) {
         Color lC = splashPaintTexture.GetPixelBilinear((float)lxx / (lW - 1.0f), (float)lyy / (lH - 1.0f));
-        //float lsx = (lxx - (lW / 2.0f)) / lW;
-        //float lsy = (lyy - (lH / 2.0f)) / lH;
         float lS = 1.0f - lC.a;
         if (lS > 0.0f) {
           lS += lAlphas [lyy, lxx, terrainTextureNumber];
@@ -90,27 +99,19 @@ public class ColorSplash : MonoBehaviour
           lModified = lModified || lAlphas [lyy, lxx, terrainTextureNumber] != lS;
           SetTextureOnMap (lAlphas, lxx, lyy, lS);
         }
-        /*
-        float lsx = (lxx - (lW / 2.0f)) / lW * 180.0f * Mathf.Deg2Rad;
-        float lsy = (lyy - (lH / 2.0f)) / lH * 180.0f * Mathf.Deg2Rad;
-        float lS = Mathf.Cos (lsx) * Mathf.Cos (lsy);
-        if (lS > 0.0f) {
-          lS += lAlphas [lyy, lxx, terrainTextureNumber];
-          if (lS > 1.0f) {
-            lS = 1.0f;
-          }
-          lModified = lModified || lAlphas [lyy, lxx, terrainTextureNumber] != lS;
-          SetTextureOnMap (lAlphas, lxx, lyy, lS);
-        }
-        */
-
       }
     }
     if (lModified) {
       GameController.instance.SetTerrainAlphas (lX, lY, lAlphas);
     }
+  }*/
+
+  void SplashOnMap ()
+  {
+    GameController.instance.SplashOnMap(pencilName, fCollisionPoint, transform.localScale, splashHeightSize, splashFactor, true);
   }
 
+  /*
   void SplashOnMap ()
   {
     Vector2 lPos1 = GameController.instance.ConvertToHeightMapPoint (fCollisionPoint - transform.localScale * splashHeightSize);
@@ -143,6 +144,7 @@ public class ColorSplash : MonoBehaviour
       GameController.instance.SetTerrainHeights (lX, lY, lHeights);
     }
   }
+  */
   
   void OnCollisionEnter (Collision collision)
   {

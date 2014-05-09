@@ -48,6 +48,15 @@ public class PlayerControl : MonoBehaviour
       fStartFireTime = Time.time;
       fLoad = true;
     }
+    if (Input.GetKeyUp(KeyCode.Keypad0)) {
+      bullet.GetComponent<ColorSplash>().player = 0;
+    }
+    if (Input.GetKeyUp(KeyCode.Keypad1)) {
+      bullet.GetComponent<ColorSplash>().player = 1;
+    }
+    if (Input.GetKeyUp(KeyCode.Keypad2)) {
+      bullet.GetComponent<ColorSplash>().player = 2;
+    }
     if (Input.GetButtonUp ("Fire1")) {
       fLoad = false;
       Vector3 lPos = fLader.localPosition;

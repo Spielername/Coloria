@@ -56,9 +56,23 @@ public class GameController : MonoBehaviour
     public GameObject towerPreFab = null;
   }
 
+  [System.Serializable]
+  public class TerrainModifierPencil
+  {
+    public string name = "<name>";
+    public Texture2D pencil;
+  }
+  
+  [System.Serializable]
+  public class TerrainModifierSetup
+  {
+    public TerrainModifierPencil[] pencils = new TerrainModifierPencil[1];
+  }
+
   public GameSetup gameSetup = new GameSetup ();
   public TerrainConfig terrainConfig = new TerrainConfig ();
   public LevelGeneration levelGeneration = new LevelGeneration ();
+  public TerrainModifierSetup terrainModifierSetup = new TerrainModifierSetup ();
   public static GameController instance = null;
   protected Terrain[,] fTerrains;
   protected float[,] fHeights;
@@ -69,6 +83,7 @@ public class GameController : MonoBehaviour
   protected int fTerrainPartMapSize = 64;
   protected int fTerrainPartPaintSize = 64;
   protected int fTerrainPartTextureCount = 0;
+  protected Hashtable fPencils = new Hashtable ();
 
   // Use this for initialization
   void Start ()
@@ -80,6 +95,10 @@ public class GameController : MonoBehaviour
     if (levelGeneration.towerPreFab == null) {
       levelGeneration.towerPreFab = GameObject.Find ("Tower");
     }
+    for (int lI = 0; lI < terrainModifierSetup.pencils.Length; lI++) {
+      fPencils.Add (terrainModifierSetup.pencils [lI].name, terrainModifierSetup.pencils [lI]);
+    }
+    //fPencils["<name>"];
     CreateMap ();
     CreateTerrainGameObjects ();
 
@@ -224,6 +243,17 @@ public class GameController : MonoBehaviour
     }
   }
 
+  public TerrainModifierPencil GetPencilByName (string aName)
+  {
+    return (TerrainModifierPencil)fPencils [aName];
+  }
+  
+  //********************************************
+  //
+  //                 HEIGHT
+  //
+  //********************************************
+  
   public float SampleHeight (Vector3 aPos)
   {
     Vector3 lPos = aPos - (transform.position - new Vector3 (terrainConfig.worldSize / 2.0f, 0, terrainConfig.worldSize / 2.0f));
@@ -308,7 +338,56 @@ public class GameController : MonoBehaviour
       }
     }
   }
+
+  public void SplashOnMap (Texture2D aTexture, Vector3 aPoint, Vector3 aScale, float aSize, float aFactor, bool aCheckLevel = true, float aMaxLevelDiff = 0.01f)
+  {
+    bool lModified = false;
+    Vector2 lPos1 = ConvertToHeightMapPoint (aPoint - aScale * aSize);
+    Vector2 lPos2 = ConvertToHeightMapPoint (aPoint + aScale * aSize);
+    int lX = Mathf.FloorToInt (lPos1.x);
+    int lY = Mathf.FloorToInt (lPos1.y);
+    int lW = Mathf.FloorToInt (lPos2.x) - lX;
+    int lH = Mathf.FloorToInt (lPos2.y) - lY;
+    float[,] lHeights = GetTerrainHeights (lX, lY, lW, lH);
+    for (int lxx = 0; lxx < (lW - 1); lxx++) {
+      for (int lyy = 0; lyy < (lH - 1); lyy++) {
+        Color lC = aTexture.GetPixelBilinear ((float)lxx / (lW - 1.0f), (float)lyy / (lH - 1.0f));
+        float lS = (1.0f - lC.a) * aFactor;
+        if (lS != 0.0f) {
+          lS += lHeights [lyy, lxx];
+          if (aCheckLevel) {
+            float lLS = GameController.instance.GetTerrainLevelHeigth (lX + lxx, lY + lyy);
+            if (lS < lLS) {
+              lS = lLS;
+            } else if (lS > (lLS + aMaxLevelDiff)) {
+              lS = lLS + aMaxLevelDiff;
+            }
+          }
+          if (lS > 1.0f) {
+            lS = 1.0f;
+          }
+          lModified = lModified || lHeights [lyy, lxx] != lS;
+          lHeights [lyy, lxx] = lS;
+        }
+      }
+    }
+    if (lModified) {
+      SetTerrainHeights (lX, lY, lHeights);
+    }
+  }
+
+  public void SplashOnMap (string aPencilName, Vector3 aPoint, Vector3 aScale, float aSize, float aFactor, bool aCheckLevel = true, float aMaxLevelDiff = 0.01f)
+  {
+    Texture2D lTex = GetPencilByName (aPencilName).pencil;
+    SplashOnMap (lTex, aPoint, aScale, aSize, aFactor, aCheckLevel, aMaxLevelDiff);
+  }
   
+  //********************************************
+  //
+  //                 ALPHA
+  //
+  //********************************************
+
   public float[] GetTerrainAlpha (int aX, int aY)
   {
     float[] lAlphas = new float[fTerrainPartTextureCount];
@@ -418,7 +497,84 @@ public class GameController : MonoBehaviour
     lPos.z = lPos.z / terrainConfig.worldSize * terrainConfig.mapSize;
     return new Vector2 (lPos.x, lPos.z);
   }
+
+  public void SetTextureOnMap (float[,,] aAlphas, int aX, int aY, float aValue, int aTextureNumber)
+  {
+    float lV = aAlphas [aY, aX, aTextureNumber];
+    float lO = 1.0f - lV;
+    float lNO = 1.0f - aValue;
+    float lNOfak = 1.0f;
+    if (lO > 0.0f) {
+      lNOfak = lNO / lO;
+    }
+    if (aValue == 0.0f && lV >= 1.0f) {
+      for (int lA = 0; lA < GetAlphaMapLayerCount(); lA++) {
+        if (lA == aTextureNumber) {
+          aAlphas [aY, aX, lA] = aValue;
+        } else if (lA == 0) {
+          aAlphas [aY, aX, lA] = 1.0f;
+        } else {
+          aAlphas [aY, aX, lA] = 0.0f;
+        }
+      }
+    } else {
+      for (int lA = 0; lA < GetAlphaMapLayerCount(); lA++) {
+        if (lA == aTextureNumber) {
+          aAlphas [aY, aX, lA] = aValue;
+        } else {
+          aAlphas [aY, aX, lA] *= lNOfak;
+        }
+      }
+    }
+  }
   
+  public void PaintOnMap (Texture2D aTexture, int aTextureNumber, Vector3 aPoint, Vector3 aScale, float aSize)
+  {
+    bool lModified = false;
+    Vector2 lPos1 = ConvertToAlphaMapPoint (aPoint - aScale * aSize);
+    Vector2 lPos2 = ConvertToAlphaMapPoint (aPoint + aScale * aSize);
+    int lX = Mathf.FloorToInt (lPos1.x);
+    int lY = Mathf.FloorToInt (lPos1.y);
+    int lW = Mathf.FloorToInt (lPos2.x) - lX;
+    int lH = Mathf.FloorToInt (lPos2.y) - lY;
+    float[,,] lAlphas = GetTerrainAlphas (lX, lY, lW, lH);
+    for (int lxx = 0; lxx < (lW - 1); lxx++) {
+      for (int lyy = 0; lyy < (lH - 1); lyy++) {
+        Color lC = aTexture.GetPixelBilinear ((float)lxx / (lW - 1.0f), (float)lyy / (lH - 1.0f));
+        float lS = 1.0f - lC.a;
+        if (lS > 0.0f) {
+          lS += lAlphas [lyy, lxx, aTextureNumber];
+          if (lS > 1.0f) {
+            lS = 1.0f;
+          }
+          lModified = lModified || lAlphas [lyy, lxx, aTextureNumber] != lS;
+          SetTextureOnMap (lAlphas, lxx, lyy, lS, aTextureNumber);
+        }
+      }
+    }
+    if (lModified) {
+      SetTerrainAlphas (lX, lY, lAlphas);
+    }
+  }
+
+  public int GetPlayerSplashTextureNumber (int aPlayer)
+  {
+    if (aPlayer > 0) {
+      return terrainConfig.textures.Length + aPlayer * (TerrainConfigPlayerTexture.textureCount - 1);
+    } else {
+      return 0;
+    }
+  }
+
+  // aPlayer = 0 -> base terrain
+  //           1 -> first player
+  public void PaintOnMap (string aPencilName, int aPlayer, Vector3 aPoint, Vector3 aScale, float aSize)
+  {
+    Texture2D lTex = GetPencilByName (aPencilName).pencil;
+    int lTexNum = GetPlayerSplashTextureNumber (aPlayer);
+    PaintOnMap (lTex, lTexNum, aPoint, aScale, aSize);
+  }
+
   void DoAlphaMapByHeights ()
   {
     int lw = terrainConfig.paintSize;
@@ -427,7 +583,7 @@ public class GameController : MonoBehaviour
       for (int ly = 0; ly < lh; ly++) {
         float lheight = fHeights [ly, lx] * terrainConfig.textures.Length;
         int lt = Mathf.FloorToInt (lheight);
-        float lc = Mathf.Ceil (lheight);
+        //float lc = Mathf.Ceil (lheight);
         for (int ll = 0; ll < fTerrainPartTextureCount; ll++) {
           if (ll == lt) {
             fAlphas [ly, lx, ll] = 1.0f;
@@ -439,6 +595,12 @@ public class GameController : MonoBehaviour
     }
   }
 
+  //********************************************
+  //
+  //                 GENERATORS
+  //
+  //********************************************
+  
   void DoXY ()
   {
     int lw = terrainConfig.mapSize;
@@ -555,7 +717,7 @@ public class GameController : MonoBehaviour
         for (int ly = 0; ly < lcount; ly++) {
           __TowerPos lPos = lPoss [lx, ly];
           Vector3 lTPos = TerrainPosToWorldPos (lPos.x, lPos.y) + Vector3.down * 0.5f;
-          print ("Tower at " + lPos.x + " " + lPos.y + " " + lPos.h + " " + lTPos);
+          //print ("Tower at " + lPos.x + " " + lPos.y + " " + lPos.h + " " + lTPos);
           Instantiate (levelGeneration.towerPreFab, lTPos, Quaternion.identity);
         }
       }
@@ -569,8 +731,48 @@ public class GameController : MonoBehaviour
     SetMap ();
   }
 
-  // Server Stuff
+  //********************************************
+  //
+  //                 SCORE
+  //
+  //********************************************
 
+  public float[] CalculateTerrainAreas ()
+  {
+    float[] lSums = new float[fAlphas.GetLength(2)];
+    for(int ll = 0; ll < fAlphas.GetLength(2); ll++) {
+      lSums[ll] = 0.0f;
+      for(int lx = 0; lx < fAlphas.GetLength(1); lx++) {
+        for(int ly = 0; ly < fAlphas.GetLength(0); ly++) {
+          lSums[ll] += fAlphas[ly,lx,ll];
+        }
+      }
+    }
+    return lSums;
+  }
+  
+  public int[] CalculateTerrainAreas (float lMin)
+  {
+    int[] lSums = new int[fAlphas.GetLength(2)];
+    for(int ll = 0; ll < fAlphas.GetLength(2); ll++) {
+      lSums[ll] = 0;
+      for(int lx = 0; lx < fAlphas.GetLength(1); lx++) {
+        for(int ly = 0; ly < fAlphas.GetLength(0); ly++) {
+          if (fAlphas[ly,lx,ll] >= lMin) {
+            lSums[ll]++;
+          }
+        }
+      }
+    }
+    return lSums;
+  }
+  
+  //********************************************
+  //
+  //                 SERVER STUFF
+  //
+  //********************************************
+  
   void OnServerInitialized ()
   {
     print ("OnServerInitialized");
@@ -583,8 +785,12 @@ public class GameController : MonoBehaviour
     networkView.RPC ("SetLevel", player, fHeights);
   }
 
-  // Client Stuff
-
+  //********************************************
+  //
+  //                 CLIENT STUFF
+  //
+  //********************************************
+  
   [RPC]
   void SetLevel (float[,] aHeightmap)
   {
@@ -604,6 +810,22 @@ public class GameController : MonoBehaviour
   // Update is called once per frame
   void Update ()
   {
-  
+
+  }
+
+  void OnGUI ()
+  {
+    /*
+    GUILayout.Label ("Scores (float):");
+    float[] lFS = CalculateTerrainAreas();
+    for(int lI = 0; lI < lFS.Length; lI++) {
+      GUILayout.Label (lI + " = " + lFS[lI]);
+    }
+    GUILayout.Label ("Scores (int):");
+    int[] lIS = CalculateTerrainAreas(0.5f);
+    for(int lI = 0; lI < lIS.Length; lI++) {
+      GUILayout.Label (lI + " = " + lIS[lI]);
+    }
+    */
   }
 }
