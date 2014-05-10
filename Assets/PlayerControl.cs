@@ -31,69 +31,68 @@ public class PlayerControl : MonoBehaviour
     fRohr = fKatapult.transform.FindChild ("Rohr");
     fStartPos = fRohr.FindChild ("StartPos");
     fLader = fRohr.FindChild ("Lader");
-    if (bullet == null) {
-      bullet = GameObject.Find ("Kugel");
-    }
   }
 
   // Update is called once per frame
   void Update ()
   {
-    float lS = Input.GetAxis ("Speed");
-    float lH = Input.GetAxis ("Horizontal");
-    float lV = Input.GetAxis ("Vertical");
-    fKatapult.Rotate (new Vector3 (lV * Time.deltaTime * speed, 0, 0));
-    transform.Rotate (new Vector3 (0, lH * Time.deltaTime * speed, 0));
-    if (Input.GetButtonDown ("Fire1")) {
-      fStartFireTime = Time.time;
-      fLoad = true;
-    }
-    if (Input.GetKeyUp(KeyCode.Keypad0)) {
-      bullet.GetComponent<ColorSplash>().player = 0;
-    }
-    if (Input.GetKeyUp(KeyCode.Keypad1)) {
-      bullet.GetComponent<ColorSplash>().player = 1;
-    }
-    if (Input.GetKeyUp(KeyCode.Keypad2)) {
-      bullet.GetComponent<ColorSplash>().player = 2;
-    }
-    if (Input.GetButtonUp ("Fire1")) {
-      fLoad = false;
-      Vector3 lPos = fLader.localPosition;
-      lPos.y = 1.0f;
-      fLader.localPosition = lPos;
-      float lPower = power * (minPower + ((Time.time - fStartFireTime) * timeScale));
-      GameObject lBullet = Instantiate (bullet, fStartPos.position, Quaternion.identity) as GameObject;
-      lBullet.transform.parent = GameController.instance.GetTempObjectContainer();
-      lBullet.rigidbody.AddForce (fRohr.TransformDirection (Vector3.up) * lPower);
-    }
-    if (fLoad) {
-      Vector3 lPos = fLader.localPosition;
-      if (lPos.y > -1.0f) {
-        lPos.y -= 0.01f;
+    if (networkView.isMine) {
+      float lS = Input.GetAxis ("Speed");
+      float lH = Input.GetAxis ("Horizontal");
+      float lV = Input.GetAxis ("Vertical");
+      fKatapult.Rotate (new Vector3 (lV * Time.deltaTime * speed, 0, 0));
+      transform.Rotate (new Vector3 (0, lH * Time.deltaTime * speed, 0));
+      if (Input.GetButtonDown ("Fire1")) {
+        fStartFireTime = Time.time;
+        fLoad = true;
       }
-      fLader.localPosition = lPos;
-    }
-    {
-      Vector3 lPos = transform.position;
-      float lMax = GameController.instance.SampleHeight(transform.position + new Vector3 (-1, 0, 1)); // fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, 1));
-      float lY = GameController.instance.SampleHeight(transform.position + new Vector3 (1, 0, 1)); // fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, 1));
-      if (lY > lMax)
-        lMax = lY;
-      lY = GameController.instance.SampleHeight(transform.position + new Vector3 (1, 0, -1)); // fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, -1));
-      if (lY > lMax)
-        lMax = lY;
-      lY = GameController.instance.SampleHeight(transform.position + new Vector3 (-1, 0, -1)); // fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, -1));
-      if (lY > lMax)
-        lMax = lY;
-      lY = GameController.instance.SampleHeight(transform.position); // fTerrain.SampleHeight (transform.position);
-      if (lY > lMax)
-        lMax = lY;
-      lPos.y = lMax + 0.5f;
-      if (lS != 0.0f) {
-        lPos = lPos + transform.forward * Mathf.Clamp(lS * Time.deltaTime, -0.0001f, 0.001f);
+      if (Input.GetKeyUp (KeyCode.Keypad0)) {
+        bullet.GetComponent<ColorSplash> ().player = 0;
       }
-      transform.position = lPos + transform.forward * lS;
+      if (Input.GetKeyUp (KeyCode.Keypad1)) {
+        bullet.GetComponent<ColorSplash> ().player = 1;
+      }
+      if (Input.GetKeyUp (KeyCode.Keypad2)) {
+        bullet.GetComponent<ColorSplash> ().player = 2;
+      }
+      if (Input.GetButtonUp ("Fire1")) {
+        fLoad = false;
+        Vector3 lPos = fLader.localPosition;
+        lPos.y = 1.0f;
+        fLader.localPosition = lPos;
+        float lPower = power * (minPower + ((Time.time - fStartFireTime) * timeScale));
+        GameObject lBullet = Instantiate (bullet, fStartPos.position, Quaternion.identity) as GameObject;
+        lBullet.transform.parent = GameController.instance.GetTempObjectContainer ();
+        lBullet.rigidbody.AddForce (fRohr.TransformDirection (Vector3.up) * lPower);
+      }
+      if (fLoad) {
+        Vector3 lPos = fLader.localPosition;
+        if (lPos.y > -1.0f) {
+          lPos.y -= 0.01f;
+        }
+        fLader.localPosition = lPos;
+      }
+      {
+        Vector3 lPos = transform.position;
+        float lMax = GameController.instance.SampleHeight (transform.position + new Vector3 (-1, 0, 1)); // fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, 1));
+        float lY = GameController.instance.SampleHeight (transform.position + new Vector3 (1, 0, 1)); // fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, 1));
+        if (lY > lMax)
+          lMax = lY;
+        lY = GameController.instance.SampleHeight (transform.position + new Vector3 (1, 0, -1)); // fTerrain.SampleHeight (transform.position + new Vector3 (1, 0, -1));
+        if (lY > lMax)
+          lMax = lY;
+        lY = GameController.instance.SampleHeight (transform.position + new Vector3 (-1, 0, -1)); // fTerrain.SampleHeight (transform.position + new Vector3 (-1, 0, -1));
+        if (lY > lMax)
+          lMax = lY;
+        lY = GameController.instance.SampleHeight (transform.position); // fTerrain.SampleHeight (transform.position);
+        if (lY > lMax)
+          lMax = lY;
+        lPos.y = lMax + 0.5f;
+        if (lS != 0.0f) {
+          lPos = lPos + transform.forward * Mathf.Clamp (lS * Time.deltaTime, -0.0001f, 0.001f);
+        }
+        transform.position = lPos + transform.forward * lS;
+      }
     }
   }
 }

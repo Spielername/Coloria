@@ -6,12 +6,6 @@ public class CameraControl : MonoBehaviour {
   public float smooth = 3.5f;
 
   public GameObject player = null;
-	// Use this for initialization
-	void Start () {
-	  if (player == null) {
-      player = GameObject.Find("Panzer");
-    }
-	}
 	
   void SmoothLookAt (Transform lPlayer)
   {
@@ -27,9 +21,14 @@ public class CameraControl : MonoBehaviour {
 
   // Update is called once per frame
 	void FixedUpdate () {
-    Vector3 lPos = player.transform.position + (player.transform.forward * 8.0f) + Vector3.up * 5.0f;
-    transform.position = Vector3.Lerp(transform.position, lPos, smooth * Time.deltaTime);
-    SmoothLookAt(player.transform);
-    //transform.LookAt(player.transform.position);
+    if (player == null) {
+      player = GameController.instance.GetPlayer();
+    }
+    if (player != null) {
+      Vector3 lPos = player.transform.position + (player.transform.forward * 8.0f) + Vector3.up * 5.0f;
+      transform.position = Vector3.Lerp(transform.position, lPos, smooth * Time.deltaTime);
+      SmoothLookAt(player.transform);
+      //transform.LookAt(player.transform.position);
+    }
 	}
 }

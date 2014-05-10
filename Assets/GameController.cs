@@ -73,6 +73,7 @@ public class GameController : MonoBehaviour
   public class GameProperties
   {
     public float minTextureValueForScore = 0.5f;
+    public GameObject playerPreFab;
   }
   
   public GameSetup gameSetup = new GameSetup ();
@@ -103,6 +104,7 @@ public class GameController : MonoBehaviour
     public Transform transform;
   }
   protected ArrayList fLevelObjects = new ArrayList ();
+  protected GameObject fPlayer = null;
 
   // Use this for initialization
   void Start ()
@@ -131,13 +133,17 @@ public class GameController : MonoBehaviour
       Log ("run server");
       Network.InitializeServer (gameSetup.maxPlayers - 1, gameSetup.gamePort, !Network.HavePublicAddress ());
       MasterServer.RegisterHost (gameSetup.gameTypeName, gameSetup.gameName, "by " + gameSetup.playerName);
-      //GenerateLevel ();
     } else {
       Log ("run client");
       GameObject lHostData = GameObject.Find ("NetworkHostData");
       Network.Connect (lHostData.GetComponent<NetworkHostData> ().hostData);
       Log ("run client at " + lHostData.GetComponent<NetworkHostData> ().hostData.comment);
     }
+  }
+
+  public GameObject GetPlayer()
+  {
+    return fPlayer;
   }
 
   void DestroyTerrainGameObjects ()
@@ -826,7 +832,12 @@ public class GameController : MonoBehaviour
     }
     return lSums;
   }
-  
+
+  void SpawnPlayer()
+  {
+    fPlayer = Network.Instantiate(gameProperties.playerPreFab, Vector3.zero, Quaternion.identity, 0) as GameObject;
+  }
+
   //********************************************
   //
   //                 SERVER STUFF
@@ -837,6 +848,7 @@ public class GameController : MonoBehaviour
   {
     Log ("OnServerInitialized");
     GenerateLevel ();
+    SpawnPlayer();
   }
   
   void OnPlayerConnected (NetworkPlayer player)
@@ -1009,6 +1021,7 @@ public class GameController : MonoBehaviour
   void OnConnectedToServer ()
   {
     Log ("network connected.");
+    SpawnPlayer();
   }
 
   void OnFailedToConnect (NetworkConnectionError aError)
