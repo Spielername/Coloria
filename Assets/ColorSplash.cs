@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class ColorSplash : MonoBehaviour
@@ -152,7 +152,7 @@ public class ColorSplash : MonoBehaviour
       if (contact.otherCollider.gameObject.CompareTag("Terrain")) {
         fCollisionPoint = contact.point;
       } else if (contact.otherCollider.gameObject.CompareTag ("TurmDetector")) {
-        print ("Turm getroffen!");
+        GameController.LogIt ("Turm getroffen!");
       }
     }
   }

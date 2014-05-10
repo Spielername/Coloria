@@ -64,6 +64,7 @@ public class PlayerControl : MonoBehaviour
       fLader.localPosition = lPos;
       float lPower = power * (minPower + ((Time.time - fStartFireTime) * timeScale));
       GameObject lBullet = Instantiate (bullet, fStartPos.position, Quaternion.identity) as GameObject;
+      lBullet.transform.parent = GameController.instance.GetTempObjectContainer();
       lBullet.rigidbody.AddForce (fRohr.TransformDirection (Vector3.up) * lPower);
     }
     if (fLoad) {
@@ -90,7 +91,7 @@ public class PlayerControl : MonoBehaviour
         lMax = lY;
       lPos.y = lMax + 0.5f;
       if (lS != 0.0f) {
-        lPos = lPos + transform.forward * Mathf.Clamp(lS, -0.5f, 0.5f);
+        lPos = lPos + transform.forward * Mathf.Clamp(lS * Time.deltaTime, -0.0001f, 0.001f);
       }
       transform.position = lPos + transform.forward * lS;
     }

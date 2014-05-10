@@ -73,11 +73,16 @@ public class StartupGUI : MonoBehaviour
     GUILayout.EndArea ();
   }
 
+  private float fLastRefreshHostListTime = -100.0f;
+
   private void RefreshHostList ()
   {
     if (!fIsRefreshingHostList) {
+      GameController.LogIt("RefreshHostList");
       fIsRefreshingHostList = true;
+      MasterServer.ClearHostList();
       MasterServer.RequestHostList (gameTypeName);
+      fLastRefreshHostListTime = Time.time;
     }
   }
 
@@ -90,7 +95,9 @@ public class StartupGUI : MonoBehaviour
         fHostList = lHostList;
       }
     } else {
-      RefreshHostList ();
+      if (fLastRefreshHostListTime + 8.0f < Time.time) {
+        RefreshHostList ();
+      }
     }
   }
 

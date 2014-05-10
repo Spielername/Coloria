@@ -31,7 +31,8 @@ public class ParticleSplash : MonoBehaviour
         Quaternion rot = Quaternion.FromToRotation (Vector3.up, contact.normal);
         Vector3 pos = contact.point;
         if (SplashEffect != null) {
-          Object myParticles = Instantiate (SplashEffect, pos, rot);
+          GameObject myParticles = Instantiate (SplashEffect, pos, rot) as GameObject;
+          myParticles.transform.parent = GameController.instance.GetTempObjectContainer();
           Destroy (myParticles, playTime);
         }
       }

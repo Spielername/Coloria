@@ -79,7 +79,7 @@ public class GameController : MonoBehaviour
   public TerrainConfig terrainConfig = new TerrainConfig ();
   public LevelGeneration levelGeneration = new LevelGeneration ();
   public TerrainModifierSetup terrainModifierSetup = new TerrainModifierSetup ();
-  public GameProperties gameProperties = new GameProperties();
+  public GameProperties gameProperties = new GameProperties ();
   public static GameController instance = null;
   protected Terrain[,] fTerrains;
   protected float[,] fHeights;
@@ -92,6 +92,17 @@ public class GameController : MonoBehaviour
   protected int fTerrainPartTextureCount = 0;
   protected int[] fTerrainScores;
   protected Hashtable fPencils = new Hashtable ();
+  protected enum LevelObjectKind
+  {
+    Tower = 1
+  }
+
+  protected class LevelObject
+  {
+    public LevelObjectKind kind = LevelObjectKind.Tower;
+    public Transform transform;
+  }
+  protected ArrayList fLevelObjects = new ArrayList ();
 
   // Use this for initialization
   void Start ()
@@ -117,15 +128,15 @@ public class GameController : MonoBehaviour
     gameSetup.maxPlayers = PlayerPrefs.GetInt ("maxPlayers", gameSetup.maxPlayers);
 
     if (gameSetup.gameMode.Equals ("server")) {
-      print ("run server");
+      Log ("run server");
       Network.InitializeServer (gameSetup.maxPlayers - 1, gameSetup.gamePort, !Network.HavePublicAddress ());
       MasterServer.RegisterHost (gameSetup.gameTypeName, gameSetup.gameName, "by " + gameSetup.playerName);
       //GenerateLevel ();
     } else {
-      print ("run client");
+      Log ("run client");
       GameObject lHostData = GameObject.Find ("NetworkHostData");
       Network.Connect (lHostData.GetComponent<NetworkHostData> ().hostData);
-      print ("run client at " + lHostData.GetComponent<NetworkHostData> ().hostData.comment);
+      Log ("run client at " + lHostData.GetComponent<NetworkHostData> ().hostData.comment);
     }
   }
 
@@ -145,7 +156,7 @@ public class GameController : MonoBehaviour
   {
     Texture2D lTexture2D = Resources.Load<Texture2D> (aName);
     if (lTexture2D == null) {
-      print ("Texture2D '" + aName + "' not found!");
+      Log ("Texture2D '" + aName + "' not found!");
     }
     return lTexture2D;
   }
@@ -331,8 +342,8 @@ public class GameController : MonoBehaviour
             try {
               lV = aHeights [lyy, lxx];
             } catch (System.Exception lE) {
-              print ("aX=" + aX + " aY=" + aY + " aW=" + aHeights.GetLength (1) + " aH=" + aHeights.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
-              print ("[" + lyy + "," + lxx + "]" + lE.Message);
+              Log ("aX=" + aX + " aY=" + aY + " aW=" + aHeights.GetLength (1) + " aH=" + aHeights.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
+              Log ("[" + lyy + "," + lxx + "]" + lE.Message);
               return;
             }
             lHeights [ly - lpsy, lx - lpsx] = lV;
@@ -466,8 +477,8 @@ public class GameController : MonoBehaviour
               try {
                 lV = aAlphas [lyy, lxx, ll];
               } catch (System.Exception lE) {
-                print ("aX=" + aX + " aY=" + aY + " aW=" + aAlphas.GetLength (1) + " aH=" + aAlphas.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
-                print ("[" + lyy + "," + lxx + "," + ll + "]" + lE.Message);
+                Log ("aX=" + aX + " aY=" + aY + " aW=" + aAlphas.GetLength (1) + " aH=" + aAlphas.GetLength (0) + " ltx=" + ltx + " lty=" + lty + " lpsx=" + lpsx + " lpex=" + lpex + " lpsy=" + lpsy + " lpey=" + lpey);
+                Log ("[" + lyy + "," + lxx + "," + ll + "]" + lE.Message);
                 return;
               }
               lAlphas [ly - lpsy, lx - lpsx, ll] = lV;
@@ -483,9 +494,9 @@ public class GameController : MonoBehaviour
           float lOld = fAlphas [aY + ly, aX + lx, ll];
           float lNew = aAlphas [ly, lx, ll];
           if (lOld >= gameProperties.minTextureValueForScore && lNew < gameProperties.minTextureValueForScore) {
-            fTerrainScores[ll]--;
+            fTerrainScores [ll]--;
           } else if (lOld < gameProperties.minTextureValueForScore && lNew >= gameProperties.minTextureValueForScore) {
-            fTerrainScores[ll]++;
+            fTerrainScores [ll]++;
           }
           fAlphas [aY + ly, aX + lx, ll] = lNew;
         }
@@ -695,6 +706,39 @@ public class GameController : MonoBehaviour
     );
   }
 
+  GameObject fTempObjectContainer = null;
+  
+  public Transform GetTempObjectContainer ()
+  {
+    if (fTempObjectContainer == null) {
+      fTempObjectContainer = new GameObject ();
+      fTempObjectContainer.name = "TempContainer";
+    }
+    return fTempObjectContainer.transform;
+  }
+  
+  GameObject fLevelGameObjectContainer = null;
+
+  Transform GetGameObjectContainer ()
+  {
+    if (fLevelGameObjectContainer == null) {
+      fLevelGameObjectContainer = new GameObject ();
+      fLevelGameObjectContainer.name = "LevelContainer";
+    }
+    return fLevelGameObjectContainer.transform;
+  }
+
+  GameObject CreateTower (Vector3 aPos, Quaternion aRotation)
+  {
+    GameObject lTower = Instantiate (levelGeneration.towerPreFab, aPos, aRotation) as GameObject;
+    lTower.transform.parent = GetGameObjectContainer ();
+    LevelObject lLO = new LevelObject ();
+    lLO.kind = LevelObjectKind.Tower;
+    lLO.transform = lTower.transform;
+    fLevelObjects.Add (lLO);
+    return lTower;
+  }
+
   void GenerateTowers ()
   {
     if (levelGeneration.towerPreFab != null && levelGeneration.towerCount > 0) {
@@ -733,8 +777,7 @@ public class GameController : MonoBehaviour
         for (int ly = 0; ly < lcount; ly++) {
           __TowerPos lPos = lPoss [lx, ly];
           Vector3 lTPos = TerrainPosToWorldPos (lPos.x, lPos.y) + Vector3.down * 0.5f;
-          //print ("Tower at " + lPos.x + " " + lPos.y + " " + lPos.h + " " + lTPos);
-          Instantiate (levelGeneration.towerPreFab, lTPos, Quaternion.identity);
+          CreateTower (lTPos, Quaternion.identity);
         }
       }
     }
@@ -745,7 +788,7 @@ public class GameController : MonoBehaviour
     GenerateMap ();
     GenerateTowers ();
     SetMap ();
-    fTerrainScores = CalculateTerrainAreas(0.5f);
+    fTerrainScores = CalculateTerrainAreas (gameProperties.minTextureValueForScore);
   }
 
   //********************************************
@@ -756,12 +799,12 @@ public class GameController : MonoBehaviour
 
   public float[] CalculateTerrainAreas ()
   {
-    float[] lSums = new float[fAlphas.GetLength(2)];
-    for(int ll = 0; ll < fAlphas.GetLength(2); ll++) {
-      lSums[ll] = 0.0f;
-      for(int lx = 0; lx < fAlphas.GetLength(1); lx++) {
-        for(int ly = 0; ly < fAlphas.GetLength(0); ly++) {
-          lSums[ll] += fAlphas[ly,lx,ll];
+    float[] lSums = new float[fAlphas.GetLength (2)];
+    for (int ll = 0; ll < fAlphas.GetLength(2); ll++) {
+      lSums [ll] = 0.0f;
+      for (int lx = 0; lx < fAlphas.GetLength(1); lx++) {
+        for (int ly = 0; ly < fAlphas.GetLength(0); ly++) {
+          lSums [ll] += fAlphas [ly, lx, ll];
         }
       }
     }
@@ -770,13 +813,13 @@ public class GameController : MonoBehaviour
   
   public int[] CalculateTerrainAreas (float lMin)
   {
-    int[] lSums = new int[fAlphas.GetLength(2)];
-    for(int ll = 0; ll < fAlphas.GetLength(2); ll++) {
-      lSums[ll] = 0;
-      for(int lx = 0; lx < fAlphas.GetLength(1); lx++) {
-        for(int ly = 0; ly < fAlphas.GetLength(0); ly++) {
-          if (fAlphas[ly,lx,ll] >= lMin) {
-            lSums[ll]++;
+    int[] lSums = new int[fAlphas.GetLength (2)];
+    for (int ll = 0; ll < fAlphas.GetLength(2); ll++) {
+      lSums [ll] = 0;
+      for (int lx = 0; lx < fAlphas.GetLength(1); lx++) {
+        for (int ly = 0; ly < fAlphas.GetLength(0); ly++) {
+          if (fAlphas [ly, lx, ll] >= lMin) {
+            lSums [ll]++;
           }
         }
       }
@@ -792,14 +835,72 @@ public class GameController : MonoBehaviour
   
   void OnServerInitialized ()
   {
-    print ("OnServerInitialized");
+    Log ("OnServerInitialized");
     GenerateLevel ();
   }
   
   void OnPlayerConnected (NetworkPlayer player)
   {
-    print ("Player " + player.ToString () + " connected from " + player.ipAddress + ":" + player.port);
-    networkView.RPC ("SetLevel", player, fHeights);
+    Log ("Player " + player.ToString () + " connected from " + player.ipAddress + ":" + player.port);
+    SendLevel (player);
+  }
+
+  void SendLevel (NetworkPlayer player)
+  {
+    networkView.RPC ("RPC_BeginLevelSend", player);
+    //HEIGHTS
+    try {
+      Log ("collecting heights for player " + player);
+      byte[] lHeights = new byte[fHeights.GetLength (0) * fHeights.GetLength (1) * 2];
+      int lXF = 2;
+      int lYF = lXF * fHeights.GetLength (1);
+      for (int lx = 0; lx < fHeights.GetLength(1); lx++) {
+        for (int ly = 0; ly < fHeights.GetLength(0); ly++) {
+          int lV = Mathf.FloorToInt (fHeights [ly, lx] * 65535);
+          lHeights [lx * lXF + ly * lYF] = (byte)(lV & 0xFF);
+          lHeights [lx * lXF + ly * lYF + 1] = (byte)(lV >> 8);
+        }
+      }
+      lHeights = CompressLZF.Compress (lHeights);
+      Log ("sending heights to player " + player);
+      networkView.RPC ("RPC_SetHeights", player, 0, 0, fHeights.GetLength (1), fHeights.GetLength (0), lHeights);
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+    //ALPHAS
+    try {
+      Log ("collecting alphas for player " + player);
+      byte[] lAlphas = new byte[fAlphas.GetLength (0) * fAlphas.GetLength (1) * fAlphas.GetLength (2) * 2];
+      int lLF = 2;
+      int lXF = lLF * fAlphas.GetLength (2);
+      int lYF = lXF * fAlphas.GetLength (1);
+      for (int lx = 0; lx < fAlphas.GetLength(1); lx++) {
+        for (int ly = 0; ly < fAlphas.GetLength(0); ly++) {
+          for (int ll = 0; ll < fAlphas.GetLength(2); ll++) {
+            int lV = Mathf.FloorToInt (fAlphas [ly, lx, ll] * 65535);
+            lAlphas [ll * lLF + lx * lXF + ly * lYF] = (byte)(lV & 0xFF);
+            lAlphas [ll * lLF + lx * lXF + ly * lYF + 1] = (byte)(lV >> 8);
+          }
+        }
+      }
+      lAlphas = CompressLZF.Compress (lAlphas);
+      Log ("sending alphas to player " + player);
+      networkView.RPC ("RPC_SetAlphas", player, 0, 0, fAlphas.GetLength (1), fAlphas.GetLength (0), lAlphas);
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+    //LEVELOBJECTS
+    Log ("sending " + fLevelObjects.Count + " level objects for player " + player);
+    try {
+      for (int lI = 0; lI < fLevelObjects.Count; lI++) {
+        LevelObject lLO = (LevelObject)fLevelObjects [lI];
+        networkView.RPC ("RPC_CreateLevelObject", player,
+                         (int)lLO.kind, lLO.transform.position, lLO.transform.rotation);
+      }
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+    networkView.RPC ("RPC_EndLevelSend", player);
   }
 
   //********************************************
@@ -807,21 +908,112 @@ public class GameController : MonoBehaviour
   //                 CLIENT STUFF
   //
   //********************************************
+
+  bool fInLevelSend = false;
+
+  [RPC]
+  void RPC_BeginLevelSend ()
+  {
+    try {
+      fInLevelSend = true;
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+  }
+
+  [RPC]
+  void RPC_EndLevelSend ()
+  {
+    try {
+      SetMap ();
+      fTerrainScores = CalculateTerrainAreas (gameProperties.minTextureValueForScore);
+      FlushAllTerrains ();
+      fInLevelSend = false;
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+  }
   
   [RPC]
-  void SetLevel (float[,] aHeightmap)
+  void RPC_SetHeights (int aX, int aY, int aWidth, int aHeight, byte[] aHeights)
   {
-    print ("height map received " + aHeightmap.Length);
+    try {
+      Log ("RPC_SetHeights received (" + aX + "," + aY + ") " + aWidth + "x" + aHeight + " length=" + aHeights.Length);
+      aHeights = CompressLZF.Decompress (aHeights);
+      int lXF = 2;
+      int lYF = lXF * aWidth;
+      for (int lx = 0; lx < aWidth; lx++) {
+        for (int ly = 0; ly < aHeight; ly++) {
+          fHeights [aY + ly, aX + lx] = (aHeights [lx * lXF + ly * lYF] + (aHeights [lx * lXF + ly * lYF + 1] << 8)) / 65535.0f;
+        }
+      }
+      if (!fInLevelSend) {
+        SetMap ();
+        FlushAllTerrains ();
+      }
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+  }
+
+  [RPC]
+  void RPC_SetAlphas (int aX, int aY, int aWidth, int aHeight, byte[] aAlphas)
+  {
+    try {
+      Log ("RPC_SetAlphas received (" + aX + "," + aY + ") " + aWidth + "x" + aHeight + " length=" + aAlphas.Length);
+      aAlphas = CompressLZF.Decompress (aAlphas);
+      int lLF = 2;
+      int lXF = lLF * fAlphas.GetLength (2);
+      int lYF = lXF * aWidth;
+      for (int lx = 0; lx < aWidth; lx++) {
+        for (int ly = 0; ly < aHeight; ly++) {
+          for (int ll = 0; ll < fAlphas.GetLength(2); ll++) {
+            fAlphas [aY + ly, aX + lx, ll] = (aAlphas [ll * lLF + lx * lXF + ly * lYF] + (aAlphas [ll * lLF + lx * lXF + ly * lYF + 1] << 8)) / 65535.0f;
+          }
+        }
+      }
+      if (!fInLevelSend) {
+        SetMap ();
+        FlushAllTerrains ();
+      }
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+  }
+  
+  [RPC]
+  void RPC_CreateLevelObject (int aKind, Vector3 aPosition, Quaternion aRotation)
+  {
+    try {
+      Log ("RPC_CreateLevelObject received " + aKind + " " + aPosition + " " + aRotation);
+      LevelObjectKind lKind = (LevelObjectKind)aKind;
+      switch (lKind) {
+      case LevelObjectKind.Tower:
+        CreateTower (aPosition, aRotation);
+        break;
+      }
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+  }
+
+  void FlushAllTerrains ()
+  {
+    for (int lI = 0; lI < fTerrains.GetLength(0); lI++) {
+      for (int lJ = 0; lJ < fTerrains.GetLength(1); lJ++) {
+        fTerrains [lI, lJ].Flush ();
+      }
+    }
   }
 
   void OnConnectedToServer ()
   {
-    print ("network connected.");
+    Log ("network connected.");
   }
 
   void OnFailedToConnect (NetworkConnectionError aError)
   {
-    print ("network failed! " + aError.ToString ());
+    Log ("network failed! " + aError.ToString ());
   }
 
   // Update is called once per frame
@@ -830,26 +1022,41 @@ public class GameController : MonoBehaviour
 
   }
 
+  //********************************************
+  //
+  //                 GUI STUFF
+  //
+  //********************************************
+  
+  Vector2 fGameListScrollPos = Vector2.zero;
+  string fLogText = "";
+
   void OnGUI ()
   {
-    /*
-    GUILayout.Label ("Scores (float):");
-    float[] lFS = CalculateTerrainAreas();
-    for(int lI = 0; lI < lFS.Length; lI++) {
-      GUILayout.Label (lI + " = " + lFS[lI]);
-    }
-    GUILayout.Label ("Scores (int):");
-    int[] lIS = CalculateTerrainAreas(0.5f);
-    for(int lI = 0; lI < lIS.Length; lI++) {
-      GUILayout.Label (lI + " = " + lIS[lI]);
-    }
-    */
     GUILayout.Label ("Scores (int):");
     int lSum = 0;
-    for(int lI = 0; lI < fTerrainScores.Length; lI++) {
-      GUILayout.Label (lI + " = " + fTerrainScores[lI]);
-      lSum += fTerrainScores[lI];
+    for (int lI = 0; lI < fTerrainScores.Length; lI++) {
+      GUILayout.Label (lI + " = " + fTerrainScores [lI]);
+      lSum += fTerrainScores [lI];
     }
     GUILayout.Label ("Sum = " + lSum);
+    fGameListScrollPos = GUILayout.BeginScrollView (fGameListScrollPos, GUILayout.MaxHeight (Screen.height / 5), GUILayout.Width (Screen.width / 2));
+    GUILayout.TextArea (fLogText);
+    GUILayout.EndScrollView ();
+  }
+
+  public void Log (string aText)
+  {
+    print (aText);
+    fLogText += "\n" + aText;
+  }
+
+  public static void LogIt (string aText)
+  {
+    if (instance != null) {
+      instance.Log (aText);
+    } else {
+      print (aText);
+    }
   }
 }
