@@ -70,7 +70,7 @@ public class ClientSmoothSynchronisation : MonoBehaviour
   // Update is called once per frame
   void FixedUpdate ()
   {
-    if (Network.isClient) {
+    if (!networkView.isMine) {
       SyncedMovement ();
     }
   }

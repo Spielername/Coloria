@@ -75,7 +75,12 @@ public class GameController : MonoBehaviour
     public float minTextureValueForScore = 0.5f;
     public GameObject playerPreFab;
   }
-  
+
+  public const int RPC_GROUP_DEFAULT = 0;
+  public const int RPC_GROUP_WEAPON = 1;
+  public const int RPC_GROUP_PLAYER = 2;
+  public const int RPC_GROUP_LEVEL = 3;
+  public const int RPC_GROUP_TEMPORARY = 4;
   public GameSetup gameSetup = new GameSetup ();
   public TerrainConfig terrainConfig = new TerrainConfig ();
   public LevelGeneration levelGeneration = new LevelGeneration ();
@@ -105,6 +110,7 @@ public class GameController : MonoBehaviour
   }
   protected ArrayList fLevelObjects = new ArrayList ();
   protected GameObject fPlayer = null;
+  protected bool fLevelReady = false;
 
   // Use this for initialization
   void Start ()
@@ -141,7 +147,7 @@ public class GameController : MonoBehaviour
     }
   }
 
-  public GameObject GetPlayer()
+  public GameObject GetPlayer ()
   {
     return fPlayer;
   }
@@ -367,6 +373,8 @@ public class GameController : MonoBehaviour
 
   public void SplashOnMap (Texture2D aTexture, Vector3 aPoint, Vector3 aScale, float aSize, float aFactor, bool aCheckLevel = true, float aMaxLevelDiff = 0.01f)
   {
+    if (!fLevelReady)
+      return;
     bool lModified = false;
     Vector2 lPos1 = ConvertToHeightMapPoint (aPoint - aScale * aSize);
     Vector2 lPos2 = ConvertToHeightMapPoint (aPoint + aScale * aSize);
@@ -404,6 +412,8 @@ public class GameController : MonoBehaviour
 
   public void SplashOnMap (string aPencilName, Vector3 aPoint, Vector3 aScale, float aSize, float aFactor, bool aCheckLevel = true, float aMaxLevelDiff = 0.01f)
   {
+    if (!fLevelReady)
+      return;
     Texture2D lTex = GetPencilByName (aPencilName).pencil;
     SplashOnMap (lTex, aPoint, aScale, aSize, aFactor, aCheckLevel, aMaxLevelDiff);
   }
@@ -563,6 +573,8 @@ public class GameController : MonoBehaviour
   
   public void PaintOnMap (Texture2D aTexture, int aTextureNumber, Vector3 aPoint, Vector3 aScale, float aSize)
   {
+    if (!fLevelReady)
+      return;
     bool lModified = false;
     Vector2 lPos1 = ConvertToAlphaMapPoint (aPoint - aScale * aSize);
     Vector2 lPos2 = ConvertToAlphaMapPoint (aPoint + aScale * aSize);
@@ -603,6 +615,8 @@ public class GameController : MonoBehaviour
   //           1 -> first player
   public void PaintOnMap (string aPencilName, int aPlayer, Vector3 aPoint, Vector3 aScale, float aSize)
   {
+    if (!fLevelReady)
+      return;
     Texture2D lTex = GetPencilByName (aPencilName).pencil;
     int lTexNum = GetPlayerSplashTextureNumber (aPlayer);
     PaintOnMap (lTex, lTexNum, aPoint, aScale, aSize);
@@ -736,6 +750,7 @@ public class GameController : MonoBehaviour
 
   GameObject CreateTower (Vector3 aPos, Quaternion aRotation)
   {
+    //GameObject lTower = Network.Instantiate (levelGeneration.towerPreFab, aPos, aRotation, RPC_GROUP_LEVEL) as GameObject;
     GameObject lTower = Instantiate (levelGeneration.towerPreFab, aPos, aRotation) as GameObject;
     lTower.transform.parent = GetGameObjectContainer ();
     LevelObject lLO = new LevelObject ();
@@ -833,9 +848,9 @@ public class GameController : MonoBehaviour
     return lSums;
   }
 
-  void SpawnPlayer()
+  void SpawnPlayer ()
   {
-    fPlayer = Network.Instantiate(gameProperties.playerPreFab, Vector3.zero, Quaternion.identity, 0) as GameObject;
+    fPlayer = Network.Instantiate (gameProperties.playerPreFab, Vector3.zero, Quaternion.identity, RPC_GROUP_PLAYER) as GameObject;
   }
 
   //********************************************
@@ -848,13 +863,28 @@ public class GameController : MonoBehaviour
   {
     Log ("OnServerInitialized");
     GenerateLevel ();
-    SpawnPlayer();
+    SpawnPlayer ();
+    fLevelReady = true;
   }
   
   void OnPlayerConnected (NetworkPlayer player)
   {
     Log ("Player " + player.ToString () + " connected from " + player.ipAddress + ":" + player.port);
+    Network.RemoveRPCsInGroup (RPC_GROUP_WEAPON);
+    Network.RemoveRPCsInGroup (RPC_GROUP_TEMPORARY);
     SendLevel (player);
+  }
+
+  void OnPlayerDisconnected(NetworkPlayer player) {
+    Debug.Log("Clean up after player " + player);
+    Network.RemoveRPCsInGroup (RPC_GROUP_WEAPON);
+    Network.RemoveRPCsInGroup (RPC_GROUP_TEMPORARY);
+    Network.DestroyPlayerObjects(player);
+  }
+
+  void OnNetworkInstantiate(NetworkMessageInfo info) {
+    Network.RemoveRPCsInGroup (RPC_GROUP_WEAPON);
+    Network.RemoveRPCsInGroup (RPC_GROUP_TEMPORARY);
   }
 
   void SendLevel (NetworkPlayer player)
@@ -873,8 +903,9 @@ public class GameController : MonoBehaviour
           lHeights [lx * lXF + ly * lYF + 1] = (byte)(lV >> 8);
         }
       }
-      lHeights = CompressLZF.Compress (lHeights);
-      Log ("sending heights to player " + player);
+      //lHeights = CompressLZF.Compress (lHeights);
+      lHeights = Compressor.Compress (lHeights);
+      Log ("sending heights to player " + player + " length " + lHeights.Length);
       networkView.RPC ("RPC_SetHeights", player, 0, 0, fHeights.GetLength (1), fHeights.GetLength (0), lHeights);
     } catch (System.Exception lex) {
       Log (lex.Message);
@@ -896,7 +927,7 @@ public class GameController : MonoBehaviour
         }
       }
       lAlphas = CompressLZF.Compress (lAlphas);
-      Log ("sending alphas to player " + player);
+      Log ("sending alphas to player " + player + " length " + lAlphas.Length);
       networkView.RPC ("RPC_SetAlphas", player, 0, 0, fAlphas.GetLength (1), fAlphas.GetLength (0), lAlphas);
     } catch (System.Exception lex) {
       Log (lex.Message);
@@ -915,6 +946,17 @@ public class GameController : MonoBehaviour
     networkView.RPC ("RPC_EndLevelSend", player);
   }
 
+  [RPC]
+  void RPC_SendLevel (NetworkPlayer aPlayer)
+  {
+    try {
+      Log ("RPC_SendLevel received " + aPlayer);
+      SendLevel (aPlayer);
+    } catch (System.Exception lex) {
+      Log (lex.Message);
+    }
+  }
+
   //********************************************
   //
   //                 CLIENT STUFF
@@ -927,6 +969,7 @@ public class GameController : MonoBehaviour
   void RPC_BeginLevelSend ()
   {
     try {
+      Log ("RPC_BeginLevelSend received");
       fInLevelSend = true;
     } catch (System.Exception lex) {
       Log (lex.Message);
@@ -937,10 +980,13 @@ public class GameController : MonoBehaviour
   void RPC_EndLevelSend ()
   {
     try {
+      Log ("RPC_EndLevelSend received");
       SetMap ();
       fTerrainScores = CalculateTerrainAreas (gameProperties.minTextureValueForScore);
       FlushAllTerrains ();
+      SpawnPlayer ();
       fInLevelSend = false;
+      fLevelReady = true;
     } catch (System.Exception lex) {
       Log (lex.Message);
     }
@@ -951,7 +997,8 @@ public class GameController : MonoBehaviour
   {
     try {
       Log ("RPC_SetHeights received (" + aX + "," + aY + ") " + aWidth + "x" + aHeight + " length=" + aHeights.Length);
-      aHeights = CompressLZF.Decompress (aHeights);
+      //aHeights = CompressLZF.Decompress (aHeights);
+      aHeights = Compressor.Decompress (aHeights);
       int lXF = 2;
       int lYF = lXF * aWidth;
       for (int lx = 0; lx < aWidth; lx++) {
@@ -1021,7 +1068,8 @@ public class GameController : MonoBehaviour
   void OnConnectedToServer ()
   {
     Log ("network connected.");
-    SpawnPlayer();
+    Network.RemoveRPCsInGroup (RPC_GROUP_WEAPON);
+    Network.RemoveRPCsInGroup (RPC_GROUP_TEMPORARY);
   }
 
   void OnFailedToConnect (NetworkConnectionError aError)
@@ -1056,6 +1104,11 @@ public class GameController : MonoBehaviour
     fGameListScrollPos = GUILayout.BeginScrollView (fGameListScrollPos, GUILayout.MaxHeight (Screen.height / 5), GUILayout.Width (Screen.width / 2));
     GUILayout.TextArea (fLogText);
     GUILayout.EndScrollView ();
+    if (Network.isClient) {
+      if (GUILayout.Button ("Sync")) {
+        networkView.RPC ("RPC_SendLevel", RPCMode.Server, Network.player);
+      }
+    }
   }
 
   public void Log (string aText)

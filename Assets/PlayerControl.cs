@@ -36,7 +36,7 @@ public class PlayerControl : MonoBehaviour
   // Update is called once per frame
   void Update ()
   {
-    if (networkView.isMine) {
+    if (networkView. isMine) {
       float lS = Input.GetAxis ("Speed");
       float lH = Input.GetAxis ("Horizontal");
       float lV = Input.GetAxis ("Vertical");
@@ -61,7 +61,7 @@ public class PlayerControl : MonoBehaviour
         lPos.y = 1.0f;
         fLader.localPosition = lPos;
         float lPower = power * (minPower + ((Time.time - fStartFireTime) * timeScale));
-        GameObject lBullet = Instantiate (bullet, fStartPos.position, Quaternion.identity) as GameObject;
+        GameObject lBullet = Network.Instantiate (bullet, fStartPos.position, Quaternion.identity, GameController.RPC_GROUP_WEAPON) as GameObject;
         lBullet.transform.parent = GameController.instance.GetTempObjectContainer ();
         lBullet.rigidbody.AddForce (fRohr.TransformDirection (Vector3.up) * lPower);
       }

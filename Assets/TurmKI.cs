@@ -64,7 +64,7 @@ public class TurmKI : MonoBehaviour
           fLader.localPosition = fLaderOrgPos;
           float lPower = power; //power * (minPower + ((Time.time - fStartFireTime) * timeScale));
           if (Network.isServer) {
-            GameObject lBullet = Instantiate (bullet, fStartPos.position, Quaternion.identity) as GameObject;
+            GameObject lBullet = Network.Instantiate (bullet, fStartPos.position, Quaternion.identity, GameController.RPC_GROUP_WEAPON) as GameObject;
             lBullet.transform.parent = GameController.instance.GetTempObjectContainer();
             lBullet.rigidbody.AddForce (fRohr.TransformDirection (Vector3.down) * lPower);
           }
